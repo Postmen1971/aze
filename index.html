@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galvanik Stromrechner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 1em;
+            margin: 0;
+            background: #f3f4f6;
+        }
+        h1 {
+            color: #333;
+        }
+        input, select, button {
+            margin: 0.5em;
+            padding: 0.7em;
+            font-size: 1.2em;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1em 0;
+        }
+        .speed-button {
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            margin: 0.3em;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: white;
+            color: #007bff;
+        }
+        .speed-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .section {
+            margin-bottom: 1.5em;
+        }
+        #ergebnis {
+            font-weight: bold;
+            font-size: 1.6em;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <h1>Galvanik Stromrechner</h1>
+    <div class="section">
+        <label for="stromDichte">Stromdichte (A/dm²):</label><br />
+        <input type="number" id="stromDichte" step="0.1" placeholder="z. B. 2.5" />
+    </div>
+
+    <div class="section">
+        <label for="flaeche">Oberfläche (dm²):</label><br />
+        <input type="number" id="flaeche" step="0.1" placeholder="z. B. 15.2" />
+    </div>
+
+    <div class="section">
+        <label>Aktuelle Bandgeschwindigkeit (m/min):</label><br />
+        <div class="row" id="istGeschwButtons"></div>
+    </div>
+
+    <div class="section">
+        <label>Zielgeschwindigkeit (optional):</label><br />
+        <div class="row" id="zielGeschwButtons"></div>
+    </div>
+
+    <div class="section">
+        <button onclick="berechneStrom()">Berechne Strom</button>
+    </div>
+
+    <div class="section">
+        <div id="ergebnis">Bitte Daten eingeben…</div>
+    </div>
+
+    <script>
+        const istButtonsContainer = document.getElementById("istGeschwButtons");
+        const zielButtonsContainer = document.getElementById("zielGeschwButtons");
+        let aktuelleGeschw = null;
+        let zielGeschw = null;
+
+        function erzeugeButtons(container, isZiel) {
+            for (let i = 3; i <= 10; i++) {
+                const btn = document.createElement("button");
+                btn.className = "speed-button";
+                btn.innerText = i;
+                btn.onclick = function () {
+                    const buttons = container.querySelectorAll(".speed-button");
+                    buttons.forEach(b => b.classList.remove("active"));
+                    if (isZiel) {
+                        zielGeschw = zielGeschw === i ? null : i;
+                        if (zielGeschw !== null) btn.classList.add("active");
+                    } else {
+                        aktuelleGeschw = aktuelleGeschw === i ? null : i;
+                        if (aktuelleGeschw !== null) btn.classList.add("active");
+                    }
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function berechneStrom() {
+            const dichte = parseFloat(document.getElementById("stromDichte").value);
+            const flaeche = parseFloat(document.getElementById("flaeche").value);
+            const geschw = zielGeschw || aktuelleGeschw;
+
+            if (isNaN(dichte) || isNaN(flaeche) || !geschw) {
+                document.getElementById("ergebnis").innerText = "Bitte alle Werte korrekt eingeben.";
+                return;
+            }
+
+            const strom = dichte * flaeche * (geschw / (zielGeschw || geschw));
+            document.getElementById("ergebnis").innerText = `Benötigter Strom: ${strom.toFixed(2)} A`;
+
+            // Sprachausgabe
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(`Benötigter Strom: ${strom.toFixed(2)} Ampere`);
+            synth.speak(utter);
+        }
+
+        erzeugeButtons(istButtonsContainer, false);
+        erzeugeButtons(zielButtonsContainer, true);
+    </script>
+</body>
+</html>
