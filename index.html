@@ -96,9 +96,7 @@
 
     <div id="garstufe-container" style="display: none;">
       <label for="garstufe">Garstufe:</label>
-      <select id="garstufe">
-        <!-- Optionen werden dynamisch gesetzt -->
-      </select>
+      <select id="garstufe"></select>
     </div>
 
     <label for="dicke">Dicke in cm:</label>
@@ -111,56 +109,19 @@
 
   <script>
     const kerntemperaturen = {
-      steak: {
-        rare: 50,
-        medium: 57,
-        well: 65
-      },
-      rinderkotelett: {
-        rare: 52,
-        medium: 58,
-        well: 65
-      },
-      rinderbraten: {
-        medium: 60,
-        well: 70
-      },
-      rinderrippen: {
-        well: 85
-      },
-      schweinebraten: {
-        well: 75
-      },
-      schweinesteak: {
-        rosa: 65,
-        well: 70
-      },
-      schweinenacken: {
-        rosa: 65,
-        well: 75
-      },
-      hähnchenschenkel: {
-        durch: 82
-      },
-      hähnchenbrust: {
-        durch: 75
-      },
-      forelle: {
-        glasig: 56,
-        durch: 60
-      },
-      dorade: {
-        glasig: 56,
-        durch: 60
-      },
-      makrele: {
-        glasig: 58,
-        durch: 62
-      },
-      wolfsbarsch: {
-        glasig: 56,
-        durch: 60
-      }
+      steak: { rare: 50, medium: 57, well: 65 },
+      rinderkotelett: { rare: 52, medium: 58, well: 65 },
+      rinderbraten: { medium: 60, well: 70 },
+      rinderrippen: { well: 85 },
+      schweinebraten: { well: 75 },
+      schweinesteak: { rosa: 65, well: 70 },
+      schweinenacken: { rosa: 65, well: 75 },
+      hähnchenschenkel: { durch: 82 },
+      hähnchenbrust: { durch: 75 },
+      forelle: { glasig: 56, durch: 60 },
+      dorade: { glasig: 56, durch: 60 },
+      makrele: { glasig: 58, durch: 62 },
+      wolfsbarsch: { glasig: 56, durch: 60 }
     };
 
     const garstufenOptionen = {
@@ -192,8 +153,8 @@
       const lebensmittel = document.getElementById("lebensmittel").value;
       const garstufeDiv = document.getElementById("garstufe-container");
       const garstufeSelect = document.getElementById("garstufe");
-
       const stufen = garstufenOptionen[lebensmittel];
+
       if (stufen) {
         garstufeDiv.style.display = "block";
         garstufeSelect.innerHTML = "";
@@ -224,23 +185,28 @@
       if (garstufe && kerntemperaturen[lebensmittel][garstufe]) {
         temperatur = kerntemperaturen[lebensmittel][garstufe];
       } else {
-        // fallback
         temperatur = kerntemperaturen[lebensmittel]["well"];
       }
 
       let zeit;
       if (methode === "sousvide") {
-        zeit = dicke * 60; // Faustregel: 1 cm = 1 Stunde
+        zeit = dicke * 60; // 1 cm = 1 Stunde
       } else {
-        zeit = Math.round((dicke * 10) + 30); // grob geschätzt fürs Braten
+        zeit = Math.round((dicke * 10) + 30);
       }
 
       const stufentext = garstufenTexte[garstufe] || "Durch";
 
+      let finishText = "";
+      if (methode === "sousvide") {
+        finishText = `<br><strong>Finish:</strong> Nach dem Bad bitte <u>1–2 Min. pro Seite</u> bei <u>200–250 °C</u> (Pfanne oder Grill) scharf anbraten.`;
+      }
+
       document.getElementById("ausgabe").innerHTML =
         `<strong>Kerntemperatur:</strong> ${temperatur} °C<br>` +
         `<strong>Garstufe:</strong> ${stufentext}<br>` +
-        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${Math.round(zeit)} Minuten`;
+        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${Math.round(zeit)} Minuten` +
+        finishText;
     }
   </script>
 </body>
