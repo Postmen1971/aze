@@ -65,14 +65,6 @@
       border-radius: 10px;
       font-size: 20px;
     }
-
-    img {
-      margin-top: 20px;
-      width: 100%;
-      max-height: 300px;
-      object-fit: cover;
-      border-radius: 10px;
-    }
   </style>
 </head>
 <body>
@@ -88,12 +80,12 @@
     <label for="lebensmittel">Lebensmittel:</label>
     <select id="lebensmittel" onchange="zeigeGarstufen()">
       <option value="steak">Rindersteak</option>
+      <option value="rinderkotelett">Rinderkotelett</option>
       <option value="rinderbraten">Rinderbraten</option>
-      <option value="rippen">Rinderrippchen</option>
-      <option value="kotelett">Rinderkotelett</option>
+      <option value="rinderrippen">Rinderrippen</option>
       <option value="schweinebraten">Schweinebraten</option>
       <option value="schweinesteak">Schweinesteak</option>
-      <option value="schweinenacken">Schweinenacken-Steak</option>
+      <option value="schweinenacken">Schweinenacken</option>
       <option value="hähnchenschenkel">Hähnchenschenkel</option>
       <option value="hähnchenbrust">Hähnchenbrust</option>
       <option value="forelle">Forelle</option>
@@ -103,11 +95,9 @@
     </select>
 
     <div id="garstufe-container" style="display: none;">
-      <label for="garstufe">Garstufe (nur Rindfleisch):</label>
+      <label for="garstufe">Garstufe:</label>
       <select id="garstufe">
-        <option value="rare">Blutig</option>
-        <option value="medium">Medium</option>
-        <option value="well">Durch</option>
+        <!-- Optionen werden dynamisch gesetzt -->
       </select>
     </div>
 
@@ -117,53 +107,113 @@
     <button onclick="berechne()">Berechnen</button>
 
     <div class="result" id="ausgabe"></div>
-    <div id="bild-container"></div>
   </div>
 
   <script>
     const kerntemperaturen = {
-      steak: { rare: 50, medium: 57, well: 65 },
-      rinderbraten: 75,
-      rippen: 85,
-      kotelett: 70,
-      schweinebraten: 75,
-      schweinesteak: 70,
-      schweinenacken: 75,
-      hähnchenschenkel: 82,
-      hähnchenbrust: 75,
-      forelle: 60,
-      dorade: 60,
-      makrele: 62,
-      wolfsbarsch: 60
+      steak: {
+        rare: 50,
+        medium: 57,
+        well: 65
+      },
+      rinderkotelett: {
+        rare: 52,
+        medium: 58,
+        well: 65
+      },
+      rinderbraten: {
+        medium: 60,
+        well: 70
+      },
+      rinderrippen: {
+        well: 85
+      },
+      schweinebraten: {
+        well: 75
+      },
+      schweinesteak: {
+        rosa: 65,
+        well: 70
+      },
+      schweinenacken: {
+        rosa: 65,
+        well: 75
+      },
+      hähnchenschenkel: {
+        durch: 82
+      },
+      hähnchenbrust: {
+        durch: 75
+      },
+      forelle: {
+        glasig: 56,
+        durch: 60
+      },
+      dorade: {
+        glasig: 56,
+        durch: 60
+      },
+      makrele: {
+        glasig: 58,
+        durch: 62
+      },
+      wolfsbarsch: {
+        glasig: 56,
+        durch: 60
+      }
     };
 
-    const bilder = {
-      steak: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Medium_rare_rib_steak.jpg/640px-Medium_rare_rib_steak.jpg",
-      rinderbraten: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Rinderbraten.jpg",
-      rippen: "https://upload.wikimedia.org/wikipedia/commons/8/87/BBQ_Beef_Ribs.jpg",
-      kotelett: "https://upload.wikimedia.org/wikipedia/commons/3/36/Beef_chop.jpg",
-      schweinebraten: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Schweinebraten_mit_Kruste.jpg",
-      schweinesteak: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Pork_steak_with_gravy.jpg",
-      schweinenacken: "https://upload.wikimedia.org/wikipedia/commons/f/f5/Nackenkotelett.jpg",
-      hähnchenschenkel: "https://upload.wikimedia.org/wikipedia/commons/0/0c/Chicken_leg_quarters.jpg",
-      hähnchenbrust: "https://upload.wikimedia.org/wikipedia/commons/f/f2/Chicken_breast_grilled.jpg",
-      forelle: "https://upload.wikimedia.org/wikipedia/commons/b/bd/Trout_fish_baked.jpg",
-      dorade: "https://upload.wikimedia.org/wikipedia/commons/1/13/Dorade_gegrillt.jpg",
-      makrele: "https://upload.wikimedia.org/wikipedia/commons/b/b0/Makrele_gebraten.jpg",
-      wolfsbarsch: "https://upload.wikimedia.org/wikipedia/commons/3/31/Branzino_grilled.jpg"
+    const garstufenOptionen = {
+      steak: ['rare', 'medium', 'well'],
+      rinderkotelett: ['rare', 'medium', 'well'],
+      rinderbraten: ['medium', 'well'],
+      rinderrippen: ['well'],
+      schweinebraten: ['well'],
+      schweinesteak: ['rosa', 'well'],
+      schweinenacken: ['rosa', 'well'],
+      hähnchenschenkel: ['durch'],
+      hähnchenbrust: ['durch'],
+      forelle: ['glasig', 'durch'],
+      dorade: ['glasig', 'durch'],
+      makrele: ['glasig', 'durch'],
+      wolfsbarsch: ['glasig', 'durch']
+    };
+
+    const garstufenTexte = {
+      rare: "Blutig",
+      medium: "Medium",
+      well: "Durch",
+      rosa: "Rosa",
+      durch: "Durch",
+      glasig: "Glasig"
     };
 
     function zeigeGarstufen() {
       const lebensmittel = document.getElementById("lebensmittel").value;
       const garstufeDiv = document.getElementById("garstufe-container");
-      garstufeDiv.style.display = lebensmittel === "steak" ? "block" : "none";
+      const garstufeSelect = document.getElementById("garstufe");
+
+      const stufen = garstufenOptionen[lebensmittel];
+      if (stufen) {
+        garstufeDiv.style.display = "block";
+        garstufeSelect.innerHTML = "";
+        stufen.forEach(stufe => {
+          const opt = document.createElement("option");
+          opt.value = stufe;
+          opt.text = garstufenTexte[stufe] || stufe;
+          garstufeSelect.appendChild(opt);
+        });
+      } else {
+        garstufeDiv.style.display = "none";
+      }
     }
 
     function berechne() {
       const methode = document.getElementById("methode").value;
       const lebensmittel = document.getElementById("lebensmittel").value;
       const dicke = parseFloat(document.getElementById("dicke").value);
-      const garstufe = document.getElementById("garstufe").value;
+      const garstufeSelect = document.getElementById("garstufe");
+      const garstufe = garstufeSelect ? garstufeSelect.value : null;
 
       if (isNaN(dicke) || dicke <= 0) {
         document.getElementById("ausgabe").innerText = "Bitte gültige Dicke eingeben.";
@@ -171,27 +221,26 @@
       }
 
       let temperatur;
-      if (lebensmittel === "steak") {
-        temperatur = kerntemperaturen.steak[garstufe];
+      if (garstufe && kerntemperaturen[lebensmittel][garstufe]) {
+        temperatur = kerntemperaturen[lebensmittel][garstufe];
       } else {
-        temperatur = kerntemperaturen[lebensmittel];
+        // fallback
+        temperatur = kerntemperaturen[lebensmittel]["well"];
       }
 
       let zeit;
       if (methode === "sousvide") {
-        zeit = dicke * 60; // 1 cm = 1 Stunde als Faustregel
+        zeit = dicke * 60; // Faustregel: 1 cm = 1 Stunde
       } else {
-        zeit = Math.round((dicke * 10) + 30); // grobe Schätzung fürs Braten
+        zeit = Math.round((dicke * 10) + 30); // grob geschätzt fürs Braten
       }
+
+      const stufentext = garstufenTexte[garstufe] || "Durch";
 
       document.getElementById("ausgabe").innerHTML =
         `<strong>Kerntemperatur:</strong> ${temperatur} °C<br>` +
-        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${zeit} Minuten`;
-
-      const bild = bilder[lebensmittel];
-      document.getElementById("bild-container").innerHTML = bild
-        ? `<img src="${bild}" alt="${lebensmittel}">`
-        : "";
+        `<strong>Garstufe:</strong> ${stufentext}<br>` +
+        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${Math.round(zeit)} Minuten`;
     }
   </script>
 </body>
