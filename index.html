@@ -1,56 +1,83 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Garzeit- & Kerntemperatur-Rechner</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garzeit & Kerntemperatur Rechner</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f4f4f8;
-      color: #333;
-      margin: 0;
+      background-color: #f0f4f8;
       padding: 20px;
+      margin: 0;
+      color: #333;
+      font-size: 18px;
     }
-    h1 {
-      text-align: center;
-      color: #444;
-    }
+
     .container {
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
       background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
     }
-    label, select, input {
+
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 15px;
       display: block;
-      margin: 10px 0;
+    }
+
+    select, input, button {
       width: 100%;
-    }
-    select, input {
-      padding: 10px;
+      padding: 14px;
+      font-size: 18px;
+      margin-top: 8px;
       border: 1px solid #ccc;
-      border-radius: 8px;
+      border-radius: 10px;
+      box-sizing: border-box;
     }
-    .result {
+
+    button {
+      background-color: #2e8b57;
+      color: white;
       margin-top: 20px;
-      padding: 15px;
-      background: #eaf5ea;
-      border: 1px solid #c8e6c9;
-      border-radius: 8px;
+      cursor: pointer;
+      border: none;
     }
+
+    button:hover {
+      background-color: #276f48;
+    }
+
+    .result {
+      margin-top: 30px;
+      padding: 20px;
+      background: #e0f7e9;
+      border-left: 6px solid #2e8b57;
+      border-radius: 10px;
+      font-size: 20px;
+    }
+
     img {
-      max-width: 100%;
-      margin-top: 10px;
-      border-radius: 8px;
+      margin-top: 20px;
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Garzeit- & Kerntemperatur-Rechner</h1>
+    <h1>Garzeit & Kerntemperatur Rechner</h1>
 
     <label for="methode">Garmethode:</label>
     <select id="methode">
@@ -76,7 +103,7 @@
     </select>
 
     <div id="garstufe-container" style="display: none;">
-      <label for="garstufe">Garstufe (nur Rind):</label>
+      <label for="garstufe">Garstufe (nur Rindfleisch):</label>
       <select id="garstufe">
         <option value="rare">Blutig</option>
         <option value="medium">Medium</option>
@@ -85,12 +112,11 @@
     </div>
 
     <label for="dicke">Dicke in cm:</label>
-    <input type="number" id="dicke" min="0.5" step="0.1" placeholder="z. B. 2.5">
+    <input type="number" id="dicke" placeholder="z. B. 2.5" min="0.5" step="0.1" />
 
     <button onclick="berechne()">Berechnen</button>
 
     <div class="result" id="ausgabe"></div>
-
     <div id="bild-container"></div>
   </div>
 
@@ -140,7 +166,7 @@
       const garstufe = document.getElementById("garstufe").value;
 
       if (isNaN(dicke) || dicke <= 0) {
-        document.getElementById("ausgabe").innerText = "Bitte gültige Dicke angeben.";
+        document.getElementById("ausgabe").innerText = "Bitte gültige Dicke eingeben.";
         return;
       }
 
@@ -153,9 +179,9 @@
 
       let zeit;
       if (methode === "sousvide") {
-        zeit = dicke * 60;
+        zeit = dicke * 60; // 1 cm = 1 Stunde als Faustregel
       } else {
-        zeit = Math.round((dicke * 10) + 30); // grobe Bratzeit-Schätzung in Minuten
+        zeit = Math.round((dicke * 10) + 30); // grobe Schätzung fürs Braten
       }
 
       document.getElementById("ausgabe").innerHTML =
@@ -165,7 +191,7 @@
       const bild = bilder[lebensmittel];
       document.getElementById("bild-container").innerHTML = bild
         ? `<img src="${bild}" alt="${lebensmittel}">`
-        : '';
+        : "";
     }
   </script>
 </body>
