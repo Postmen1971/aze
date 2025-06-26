@@ -1,247 +1,172 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Kerntemperatur & Garzeit Rechner</title>
-<style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garzeit- & Kerntemperatur-Rechner</title>
+  <style>
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
-        color: #222;
-        margin: 0;
-        padding: 20px;
-    }
-    header {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #1f2937;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f8;
+      color: #333;
+      margin: 0;
+      padding: 20px;
     }
     h1 {
-        font-weight: 700;
-        font-size: 2.2rem;
-        letter-spacing: 1px;
+      text-align: center;
+      color: #444;
     }
     .container {
-        max-width: 700px;
-        margin: auto;
-        background: #ffffffcc;
-        padding: 25px 30px;
-        border-radius: 15px;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
     }
-    label {
-        font-weight: 600;
-        margin-top: 15px;
-        margin-bottom: 6px;
-        display: block;
-        font-size: 1rem;
-        color: #344054;
+    label, select, input {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
     }
     select, input {
-        width: 100%;
-        padding: 12px 15px;
-        font-size: 1rem;
-        border-radius: 10px;
-        border: 2px solid #cbd5e1;
-        transition: border-color 0.3s ease;
-        outline-offset: 2px;
-        box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
-    select:hover, input:hover, select:focus, input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 8px #3b82f6aa;
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #eaf5ea;
+      border: 1px solid #c8e6c9;
+      border-radius: 8px;
     }
-    #result {
-        margin-top: 25px;
-        padding: 18px 20px;
-        background-color: #d1fae5;
-        color: #065f46;
-        border-radius: 12px;
-        font-size: 1.15rem;
-        font-weight: 600;
-        box-shadow: 0 5px 15px rgba(6, 95, 70, 0.25);
-        display: none;
-        white-space: pre-line;
+    img {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
     }
-    .bild-container {
-        margin-top: 15px;
-        text-align: center;
-    }
-    .bild-container img {
-        max-width: 120px;
-        max-height: 100px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        transition: opacity 0.4s ease;
-    }
-    footer {
-        text-align: center;
-        margin-top: 40px;
-        font-size: 0.85rem;
-        color: #6b7280;
-    }
-</style>
+  </style>
 </head>
 <body>
-<header>
-    <h1>Kerntemperatur & Garzeit Rechner</h1>
-</header>
-<div class="container">
-    <label for="methode">Garmethode auswählen:</label>
-    <select id="methode" onchange="updateResult()">
-        <option value="">-- Bitte wählen --</option>
-        <option value="klassisch">Klassisch (Braten, Ofen)</option>
-        <option value="sousvide">Sous-vide</option>
+  <div class="container">
+    <h1>Garzeit- & Kerntemperatur-Rechner</h1>
+
+    <label for="methode">Garmethode:</label>
+    <select id="methode">
+      <option value="braten">Braten</option>
+      <option value="sousvide">Sous-vide</option>
     </select>
 
-    <label for="gericht">Gericht auswählen:</label>
-    <select id="gericht" onchange="updateResult()">
-        <option value="">-- Bitte wählen --</option>
-        <option value="hähnchenbrust">Hähnchenbrust</option>
-        <option value="hähnchenschenkel">Hähnchenschenkel</option>
-        <option value="rinderfilet">Rinderfilet (Steak)</option>
-        <option value="rinderbraten">Rinderbraten</option>
-        <option value="rinderrippchen">Rinderrippchen</option>
-        <option value="rinderkotelett">Rinderkotelett</option>
-        <option value="schweinebraten">Schweinebraten</option>
-        <option value="schweinenacken">Schweinenacken-Steak</option>
-        <option value="schweinekotelett">Schweinekotelett</option>
-        <option value="schweinerippchen">Schweinerippchen</option>
-        <option value="schweinefilet">Schweinefilet</option>
-        <option value="lachs">Lachs</option>
-        <option value="forelle">Forelle</option>
-        <option value="dorade">Dorade</option>
-        <option value="makrele">Makrele</option>
-        <option value="wolfsbarsch">Wolfsbarsch</option>
+    <label for="lebensmittel">Lebensmittel:</label>
+    <select id="lebensmittel" onchange="zeigeGarstufen()">
+      <option value="steak">Rindersteak</option>
+      <option value="rinderbraten">Rinderbraten</option>
+      <option value="rippen">Rinderrippchen</option>
+      <option value="kotelett">Rinderkotelett</option>
+      <option value="schweinebraten">Schweinebraten</option>
+      <option value="schweinesteak">Schweinesteak</option>
+      <option value="schweinenacken">Schweinenacken-Steak</option>
+      <option value="hähnchenschenkel">Hähnchenschenkel</option>
+      <option value="hähnchenbrust">Hähnchenbrust</option>
+      <option value="forelle">Forelle</option>
+      <option value="dorade">Dorade</option>
+      <option value="makrele">Makrele</option>
+      <option value="wolfsbarsch">Wolfsbarsch</option>
     </select>
 
-    <label for="dicke">Dicke des Fleischstücks (in cm):</label>
-    <input type="number" id="dicke" step="0.1" min="0.5" placeholder="z. B. 2.5" onchange="updateResult()" />
+    <div id="garstufe-container" style="display: none;">
+      <label for="garstufe">Garstufe (nur Rind):</label>
+      <select id="garstufe">
+        <option value="rare">Blutig</option>
+        <option value="medium">Medium</option>
+        <option value="well">Durch</option>
+      </select>
+    </div>
 
-    <div class="bild-container" id="bildContainer"></div>
+    <label for="dicke">Dicke in cm:</label>
+    <input type="number" id="dicke" min="0.5" step="0.1" placeholder="z. B. 2.5">
 
-    <div id="result"></div>
-</div>
+    <button onclick="berechne()">Berechnen</button>
 
-<footer>
-    © 2025 Kerntemperatur Rechner – alle Angaben ohne Gewähr
-</footer>
+    <div class="result" id="ausgabe"></div>
 
-<script>
-    const daten = {
-        klassisch: {
-            hähnchenbrust: "Kerntemperatur: 74–80 °C – Sicher & saftig",
-            hähnchenschenkel: "Kerntemperatur: 80–85 °C – Durch & saftig",
-            rinderfilet: "Steak 2 cm: ca. 3–4 min pro Seite.\nKerntemperatur: Rare 50 °C, Medium 56 °C, Well Done 65+ °C",
-            rinderbraten: "Kerntemperatur: Rosa 58–60 °C, durch 70–75 °C",
-            rinderrippchen: "Langzeitgaren bei 80–90 °C bis butterzart.\nKerntemperatur: 88–92 °C",
-            rinderkotelett: "Kerntemperatur: Rosa 55–58 °C, durch 70 °C",
-            schweinebraten: "Kerntemperatur: 70–75 °C",
-            schweinenacken: "Kerntemperatur: 75–80 °C – saftig & durch",
-            schweinekotelett: "Kerntemperatur: 68–72 °C",
-            schweinerippchen: "Langzeitgaren bei 120–150 °C.\nKerntemperatur: 85–90 °C",
-            schweinefilet: "Kerntemperatur: 62–65 °C – zartrosa",
-            lachs: "Kerntemperatur: 52–60 °C – Glasig bis durch",
-            forelle: "Kerntemperatur: 60–62 °C – saftig",
-            dorade: "Kerntemperatur: 60–62 °C",
-            makrele: "Kerntemperatur: 62–65 °C",
-            wolfsbarsch: "Kerntemperatur: 60–62 °C"
-        },
-        sousvide: {
-            hähnchenbrust: { temp: "64 °C", basisMin: 90 },
-            hähnchenschenkel: { temp: "75–80 °C", basisMin: 300 },
-            rinderfilet: { temp: "54–56 °C", basisMin: 60 },
-            rinderbraten: { temp: "56–58 °C", basisMin: 360 },
-            rinderrippchen: { temp: "80–85 °C", basisMin: 720 },
-            rinderkotelett: { temp: "56 °C", basisMin: 90 },
-            schweinebraten: { temp: "64–68 °C", basisMin: 240 },
-            schweinenacken: { temp: "68–70 °C", basisMin: 300 },
-            schweinekotelett: { temp: "64 °C", basisMin: 90 },
-            schweinerippchen: { temp: "70–75 °C", basisMin: 480 },
-            schweinefilet: { temp: "62–63 °C", basisMin: 90 },
-            lachs: { temp: "48–55 °C", basisMin: 30 },
-            forelle: { temp: "50–52 °C", basisMin: 35 },
-            dorade: { temp: "50–52 °C", basisMin: 40 },
-            makrele: { temp: "52–54 °C", basisMin: 45 },
-            wolfsbarsch: { temp: "50–52 °C", basisMin: 35 }
-        },
-        bilder: {
-            hähnchenbrust: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Chicken_breast.jpg/120px-Chicken_breast.jpg",
-            hähnchenschenkel: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Chicken_leg_and_thigh.jpg/120px-Chicken_leg_and_thigh.jpg",
-            rinderfilet: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Filet_Steak_2010.jpg/120px-Filet_Steak_2010.jpg",
-            rinderbraten: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Rinderbraten_2.jpg/120px-Rinderbraten_2.jpg",
-            rinderrippchen: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Rippchen.jpg/120px-Rippchen.jpg",
-            rinderkotelett: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Kotelett.jpg/120px-Kotelett.jpg",
-            schweinebraten: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Schweinebraten.jpg/120px-Schweinebraten.jpg",
-            schweinenacken: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Schweinenacken.jpg/120px-Schweinenacken.jpg",
-            schweinekotelett: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Schweinekotelett.jpg/120px-Schweinekotelett.jpg",
-            schweinerippchen: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Schweinerippchen.jpg/120px-Schweinerippchen.jpg",
-            schweinefilet: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Schweinefilet.jpg/120px-Schweinefilet.jpg",
-            lachs: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Lachsfilet.jpg/120px-Lachsfilet.jpg",
-            forelle: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Forelle.jpg/120px-Forelle.jpg",
-            dorade: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Dorade2.jpg/120px-Dorade2.jpg",
-            makrele: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Makrele.jpg/120px-Makrele.jpg",
-            wolfsbarsch: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Wolfsbarsch.jpg/120px-Wolfsbarsch.jpg"
-        }
+    <div id="bild-container"></div>
+  </div>
+
+  <script>
+    const kerntemperaturen = {
+      steak: { rare: 50, medium: 57, well: 65 },
+      rinderbraten: 75,
+      rippen: 85,
+      kotelett: 70,
+      schweinebraten: 75,
+      schweinesteak: 70,
+      schweinenacken: 75,
+      hähnchenschenkel: 82,
+      hähnchenbrust: 75,
+      forelle: 60,
+      dorade: 60,
+      makrele: 62,
+      wolfsbarsch: 60
     };
 
-    function updateResult() {
-        const methode = document.getElementById('methode').value;
-        const gericht = document.getElementById('gericht').value;
-        const dickeInput = document.getElementById('dicke').value;
-        const bildContainer = document.getElementById('bildContainer');
-        const resultDiv = document.getElementById('result');
+    const bilder = {
+      steak: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Medium_rare_rib_steak.jpg/640px-Medium_rare_rib_steak.jpg",
+      rinderbraten: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Rinderbraten.jpg",
+      rippen: "https://upload.wikimedia.org/wikipedia/commons/8/87/BBQ_Beef_Ribs.jpg",
+      kotelett: "https://upload.wikimedia.org/wikipedia/commons/3/36/Beef_chop.jpg",
+      schweinebraten: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Schweinebraten_mit_Kruste.jpg",
+      schweinesteak: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Pork_steak_with_gravy.jpg",
+      schweinenacken: "https://upload.wikimedia.org/wikipedia/commons/f/f5/Nackenkotelett.jpg",
+      hähnchenschenkel: "https://upload.wikimedia.org/wikipedia/commons/0/0c/Chicken_leg_quarters.jpg",
+      hähnchenbrust: "https://upload.wikimedia.org/wikipedia/commons/f/f2/Chicken_breast_grilled.jpg",
+      forelle: "https://upload.wikimedia.org/wikipedia/commons/b/bd/Trout_fish_baked.jpg",
+      dorade: "https://upload.wikimedia.org/wikipedia/commons/1/13/Dorade_gegrillt.jpg",
+      makrele: "https://upload.wikimedia.org/wikipedia/commons/b/b0/Makrele_gebraten.jpg",
+      wolfsbarsch: "https://upload.wikimedia.org/wikipedia/commons/3/31/Branzino_grilled.jpg"
+    };
 
-        // Bild anzeigen
-        if (gericht && daten.bilder[gericht]) {
-            bildContainer.innerHTML = `<img src="${daten.bilder[gericht]}" alt="${gericht}">`;
-        } else {
-            bildContainer.innerHTML = '';
-        }
-
-        // Falls Auswahl unvollständig, Ergebnis ausblenden
-        if (!methode || !gericht) {
-            resultDiv.style.display = 'none';
-            resultDiv.textContent = '';
-            return;
-        }
-
-        // Berechnung und Anzeige
-        if (methode === 'klassisch') {
-            // Nur Temperatur anzeigen, keine Zeit
-            const text = daten.klassisch[gericht] || "Keine Daten verfügbar.";
-            resultDiv.textContent = text;
-            resultDiv.style.display = 'block';
-        } else if (methode === 'sousvide') {
-            // Temperatur und Zeit anzeigen
-            if (!dickeInput || isNaN(dickeInput) || dickeInput <= 0) {
-                resultDiv.textContent = "Bitte gib eine gültige Dicke (in cm) ein, um die Garzeit zu berechnen.";
-                resultDiv.style.display = 'block';
-                return;
-            }
-            const dicke = parseFloat(dickeInput);
-            const data = daten.sousvide[gericht];
-            if (!data) {
-                resultDiv.textContent = "Keine Daten für dieses Gericht verfügbar.";
-                resultDiv.style.display = 'block';
-                return;
-            }
-
-            // Garzeit berechnen: 60 Min pro cm + 30 Min Sicherheit
-            const garzeitMinuten = Math.round(dicke * 60 + 30);
-
-            const text = `Kerntemperatur: ${data.temp}\n` +
-                         `Empfohlene Garzeit (Sous-vide):\n` +
-                         `${garzeitMinuten} Minuten (${Math.floor(garzeitMinuten / 60)} Std. ${garzeitMinuten % 60} Min)`;
-
-            resultDiv.textContent = text;
-            resultDiv.style.display = 'block';
-        } else {
-            resultDiv.style.display = 'none';
-            resultDiv.textContent = '';
-        }
+    function zeigeGarstufen() {
+      const lebensmittel = document.getElementById("lebensmittel").value;
+      const garstufeDiv = document.getElementById("garstufe-container");
+      garstufeDiv.style.display = lebensmittel === "steak" ? "block" : "none";
     }
-</script>
+
+    function berechne() {
+      const methode = document.getElementById("methode").value;
+      const lebensmittel = document.getElementById("lebensmittel").value;
+      const dicke = parseFloat(document.getElementById("dicke").value);
+      const garstufe = document.getElementById("garstufe").value;
+
+      if (isNaN(dicke) || dicke <= 0) {
+        document.getElementById("ausgabe").innerText = "Bitte gültige Dicke angeben.";
+        return;
+      }
+
+      let temperatur;
+      if (lebensmittel === "steak") {
+        temperatur = kerntemperaturen.steak[garstufe];
+      } else {
+        temperatur = kerntemperaturen[lebensmittel];
+      }
+
+      let zeit;
+      if (methode === "sousvide") {
+        zeit = dicke * 60;
+      } else {
+        zeit = Math.round((dicke * 10) + 30); // grobe Bratzeit-Schätzung in Minuten
+      }
+
+      document.getElementById("ausgabe").innerHTML =
+        `<strong>Kerntemperatur:</strong> ${temperatur} °C<br>` +
+        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${zeit} Minuten`;
+
+      const bild = bilder[lebensmittel];
+      document.getElementById("bild-container").innerHTML = bild
+        ? `<img src="${bild}" alt="${lebensmittel}">`
+        : '';
+    }
+  </script>
 </body>
 </html>
