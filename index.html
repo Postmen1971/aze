@@ -13,6 +13,7 @@
       --accent-red: #ff4d4d;
       --accent-blue: #3b82f6;
       --accent-green: #10b981;
+      --accent-orange: #f59e0b;
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --border-color: #374151;
@@ -31,7 +32,7 @@
     label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 3px; }
     input, select, textarea { width: 100%; padding: 10px; background: #111827; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
     input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
-    textarea { resize: vertical; min-height: 55px; }
+    textarea { resize: vertical; min-height: 50px; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .tab-container { display: flex; gap: 4px; margin-bottom: 12px; }
@@ -42,6 +43,10 @@
     .anlage-content.active { display: block; }
 
     .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .btn-reset { width: 100%; padding: 10px; background: #374151; color: var(--text-muted); border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-top: 8px; }
+
+    .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
+    .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
 
     /* =========================================================
        PDF DESIGN (A4 Querformat: 1123px x 794px)
@@ -59,7 +64,7 @@
     .pdf-page {
       width: 1123px;
       height: 794px;
-      padding: 30px;
+      padding: 25px;
       background: #ffffff;
       box-sizing: border-box;
       position: relative;
@@ -68,16 +73,16 @@
     .pdf-header {
       background: #1e293b;
       color: #ffffff;
-      padding: 12px 20px;
+      padding: 10px 18px;
       border-radius: 6px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .pdf-header h2 { font-size: 16pt; font-weight: bold; }
-    .pdf-header .badge { background: #3b82f6; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 11pt; font-weight: bold; }
+    .pdf-header h2 { font-size: 15pt; font-weight: bold; }
+    .pdf-header .badge { background: #3b82f6; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 10pt; font-weight: bold; }
 
     .pdf-meta-grid {
       display: grid;
@@ -85,19 +90,18 @@
       gap: 10px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      padding: 10px 15px;
+      padding: 8px 12px;
       border-radius: 6px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
-    .pdf-meta-item label { font-size: 7.5pt; text-transform: uppercase; color: #64748b; font-weight: bold; display: block; }
-    .pdf-meta-item div { font-size: 10pt; font-weight: 600; color: #0f172a; }
+    .pdf-meta-item label { font-size: 7pt; text-transform: uppercase; color: #64748b; font-weight: bold; display: block; }
+    .pdf-meta-item div { font-size: 9.5pt; font-weight: 600; color: #0f172a; }
 
-    /* 4 Anlagen nebeneinander auf einem Blatt */
     .pdf-anlagen-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
 
     .pdf-anlage-card {
@@ -107,7 +111,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      font-size: 8.5pt;
+      font-size: 8pt;
     }
 
     .pdf-anlage-title {
@@ -115,25 +119,25 @@
       color: #ffffff;
       font-weight: bold;
       text-align: center;
-      padding: 6px;
-      font-size: 10pt;
+      padding: 5px;
+      font-size: 9.5pt;
     }
 
-    .pdf-card-body { padding: 8px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .pdf-card-body { padding: 6px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
     .pdf-block {
       background: #f8fafc;
       border: 1px solid #f1f5f9;
-      padding: 6px;
+      padding: 5px;
       border-radius: 4px;
     }
 
     .pdf-block-title {
-      font-size: 7.5pt;
+      font-size: 7pt;
       font-weight: bold;
       text-transform: uppercase;
       color: #475569;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       border-bottom: 1px solid #e2e8f0;
       padding-bottom: 2px;
     }
@@ -141,18 +145,18 @@
     .pdf-block-title.red { color: #dc2626; border-bottom-color: #fca5a5; }
     .pdf-block-title.green { color: #059669; border-bottom-color: #6ee7b7; }
 
-    .pdf-val { font-size: 8.5pt; color: #1e293b; white-space: pre-wrap; word-break: break-word; }
+    .pdf-val { font-size: 8pt; color: #1e293b; white-space: pre-wrap; word-break: break-word; }
 
     .pdf-footer {
       position: absolute;
-      bottom: 15px;
-      left: 30px;
-      right: 30px;
+      bottom: 12px;
+      left: 25px;
+      right: 25px;
       border-top: 1px solid #e2e8f0;
-      padding-top: 6px;
+      padding-top: 5px;
       display: flex;
       justify-content: space-between;
-      font-size: 7.5pt;
+      font-size: 7pt;
       color: #94a3b8;
     }
   </style>
@@ -192,39 +196,86 @@
   <form id="schichtForm">
     <script>
       const anlagen = ['801', '802', '803', '804'];
+      const ursachenOptions = `
+        <option value="Kein Ausschuss">Kein Ausschuss</option>
+        <option value="Bandriss">Bandriss</option>
+        <option value="Beschichtungsfehler">Beschichtungsfehler</option>
+        <option value="Mechanischer Defekt">Mechanischer Defekt</option>
+        <option value="Verbogenes Werkzeug">Verbogenes Werkzeug</option>
+        <option value="Einstellteile Stanzerei">Einstellteile Stanzerei</option>
+        <option value="Reinigungsfehler / Flecken">Reinigungsfehler / Flecken</option>
+        <option value="Sonstiges">Sonstiges</option>
+      `;
+
       anlagen.forEach((a, index) => {
         document.write(`
           <div id="anlage-${a}" class="anlage-content ${index === 0 ? 'active' : ''}">
+            
             <div class="card">
-              <div class="card-title red">Ausschuss - Anlage ${a}</div>
-              <div class="grid-2">
+              <div class="card-title green">Produktion & Artikel</div>
+              <label>Gut-Menge (m / Stk)</label>
+              <input type="text" id="gut_menge_${a}" placeholder="z. B. 5000">
+              
+              <div class="grid-2" style="margin-top:4px;">
                 <div>
-                  <label>Menge (m / Stk)</label>
-                  <input type="text" id="ausschuss_menge_${a}" placeholder="0">
+                  <label>Aktuelle Artikelnummer</label>
+                  <input type="text" id="art_akt_${a}" placeholder="Artikel-Nr.">
                 </div>
                 <div>
-                  <label>Hauptursache</label>
-                  <select id="ausschuss_grund_${a}">
-                    <option value="Kein Ausschuss">Kein Ausschuss</option>
-                    <option value="Schweißnaht gerissen">Schweißnaht gerissen</option>
-                    <option value="Beschichtungsfehler">Beschichtungsfehler</option>
-                    <option value="Bandstillstand">Bandstillstand</option>
-                    <option value="Mechanischer Defekt">Mechanischer Defekt</option>
-                    <option value="Reinigungsfehler / Flecken">Reinigungsfehler / Flecken</option>
-                    <option value="Sonstiges">Sonstiges</option>
-                  </select>
+                  <label>Folge-Artikelnummer</label>
+                  <input type="text" id="art_folge_${a}" placeholder="Nächste Artikel-Nr.">
                 </div>
               </div>
-              <label>Ursache & Details zum Ausschuss</label>
-              <textarea id="ausschuss_details_${a}" placeholder="Warum ist der Ausschuss entstanden?"></textarea>
             </div>
 
             <div class="card">
-              <div class="card-title">Aufträge</div>
-              <label>Aktueller Auftrag</label>
-              <input type="text" id="auftrag_akt_${a}" placeholder="Teilenummer / Auftrag">
-              <label>Bekannter Folgeauftrag</label>
-              <input type="text" id="auftrag_folge_${a}" placeholder="Nächster Auftrag">
+              <div class="card-title red">Ausschuss & Fehler - Anlage ${a}</div>
+              
+              <div class="grid-2">
+                <div>
+                  <label>Ausschuss (m / Stk)</label>
+                  <input type="text" id="ausschuss_menge_${a}_1" placeholder="0">
+                </div>
+                <div>
+                  <label>Hauptursache 1</label>
+                  <select id="ausschuss_grund_${a}_1">${ursachenOptions}</select>
+                </div>
+              </div>
+              <label>Details zu Fehler 1</label>
+              <textarea id="ausschuss_details_${a}_1" placeholder="Beschreibung Fehler 1"></textarea>
+
+              <div class="sub-error">
+                <div class="sub-error-title">+ Option: Fehler 2</div>
+                <div class="grid-2">
+                  <div>
+                    <label>Ausschuss 2 (m / Stk)</label>
+                    <input type="text" id="ausschuss_menge_${a}_2" placeholder="0">
+                  </div>
+                  <div>
+                    <label>Hauptursache 2</label>
+                    <select id="ausschuss_grund_${a}_2">${ursachenOptions}</select>
+                  </div>
+                </div>
+                <label>Details zu Fehler 2</label>
+                <textarea id="ausschuss_details_${a}_2" placeholder="Beschreibung Fehler 2"></textarea>
+              </div>
+
+              <div class="sub-error">
+                <div class="sub-error-title">+ Option: Fehler 3</div>
+                <div class="grid-2">
+                  <div>
+                    <label>Ausschuss 3 (m / Stk)</label>
+                    <input type="text" id="ausschuss_menge_${a}_3" placeholder="0">
+                  </div>
+                  <div>
+                    <label>Hauptursache 3</label>
+                    <select id="ausschuss_grund_${a}_3">${ursachenOptions}</select>
+                  </div>
+                </div>
+                <label>Details zu Fehler 3</label>
+                <textarea id="ausschuss_details_${a}_3" placeholder="Beschreibung Fehler 3"></textarea>
+              </div>
+
             </div>
 
             <div class="card">
@@ -241,6 +292,7 @@
               <label>Fehlendes Werkzeug / Materialien / KVP</label>
               <textarea id="material_${a}" placeholder="Bestellungen, fehlende Teile, Verbesserungen"></textarea>
             </div>
+
           </div>
         `);
       });
@@ -249,13 +301,16 @@
     <button type="button" id="submitBtn" class="btn-submit" onclick="generateShiftPDF()">
       PDF Erstellen & Öffnen
     </button>
+    <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
+      Neues Protokoll starten (Artikel-Nr. behalten)
+    </button>
   </form>
 </div>
 
-<!-- DIESER CONTAINER ERZEUGT DAS DRUCKBLATT PRO SCHICHT -->
 <div id="pdf-container"></div>
 
 <script>
+  // Initiales Datum
   document.getElementById('datum').valueAsDate = new Date();
 
   function showAnlage(anl, event) {
@@ -265,30 +320,113 @@
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
+  // Auto-Save in LocalStorage bei jeder Eingabe
+  const formElement = id => document.getElementById(id);
+
+  function saveToLocalStorage() {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      if (el.id) {
+        localStorage.setItem('schichtbuch_' + el.id, el.value);
+      }
+    });
+  }
+
+  function loadFromLocalStorage() {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      if (el.id) {
+        const val = localStorage.getItem('schichtbuch_' + el.id);
+        if (val !== null) el.value = val;
+      }
+    });
+    if (!localStorage.getItem('schichtbuch_datum')) {
+      document.getElementById('datum').valueAsDate = new Date();
+    }
+  }
+
+  // Event Listener für Auto-Save anhängen
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFromLocalStorage();
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', saveToLocalStorage);
+      el.addEventListener('change', saveToLocalStorage);
+    });
+  });
+
+  // Neues Protokoll starten: Datum auf heute, Felder leeren, aber Artikelnummern behalten
+  function resetFormKeepArtikel() {
+    if (confirm("Möchtest du ein neues Protokoll starten? Alle Felder werden geleert, aber die Artikelnummern bleiben erhalten.")) {
+      const savedArtAkt = {};
+      const savedArtFolge = {};
+
+      ['801', '802', '803', '804'].forEach(a => {
+        savedArtAkt[a] = formElement(`art_akt_${a}`).value;
+        savedArtFolge[a] = formElement(`art_folge_${a}`).value;
+      });
+
+      // LocalStorage löschen
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('schichtbuch_')) localStorage.removeItem(key);
+      });
+
+      // Formular zurücksetzen
+      document.getElementById('schichtForm').reset();
+      document.getElementById('datum').valueAsDate = new Date();
+
+      // Artikelnummern wieder einfügen
+      ['801', '802', '803', '804'].forEach(a => {
+        formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
+        formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
+      });
+
+      saveToLocalStorage();
+      alert("Neues Formular bereit. Datum wurde aktualisiert!");
+    }
+  }
+
   async function generateShiftPDF() {
     const btn = document.getElementById('submitBtn');
     btn.innerText = "Erstelle Schichtblatt...";
     btn.style.opacity = "0.5";
 
-    const datumVal = document.getElementById('datum').value || '-';
-    const schichtVal = document.getElementById('schicht').value;
-    const bedienerVal = document.getElementById('bediener').value || '-';
+    const datumVal = formElement('datum').value || '-';
+    const schichtVal = formElement('schicht').value;
+    const bedienerVal = formElement('bediener').value || '-';
 
     const pdfContainer = document.getElementById('pdf-container');
     pdfContainer.innerHTML = '';
 
-    // HTML-Aufbau für genau 1 A4-Querformat-Blatt (enthält alle 4 Anlagen)
     let anlagenHTML = '';
     ['801', '802', '803', '804'].forEach(a => {
-      const aMenge = document.getElementById(`ausschuss_menge_${a}`).value || '0';
-      const aGrund = document.getElementById(`ausschuss_grund_${a}`).value;
-      const aDet = document.getElementById(`ausschuss_details_${a}`).value || '-';
-      const aktAuf = document.getElementById(`auftrag_akt_${a}`).value || '-';
-      const folgAuf = document.getElementById(`auftrag_folge_${a}`).value || '-';
-      const todo = document.getElementById(`todo_${a}`).value || '-';
-      const stat = document.getElementById(`stationen_${a}`).value || '-';
-      const def = document.getElementById(`defekte_${a}`).value || '-';
-      const mat = document.getElementById(`material_${a}`).value || '-';
+      const gutMenge = formElement(`gut_menge_${a}`).value || '0';
+      const artAkt = formElement(`art_akt_${a}`).value || '-';
+      const artFolge = formElement(`art_folge_${a}`).value || '-';
+      const todo = formElement(`todo_${a}`).value || '-';
+      const stat = formElement(`stationen_${a}`).value || '-';
+      const def = formElement(`defekte_${a}`).value || '-';
+      const mat = formElement(`material_${a}`).value || '-';
+
+      // Fehler 1 - 3 zusammenbauen
+      let ausschussBlockHTML = '';
+      for (let i = 1; i <= 3; i++) {
+        const menge = formElement(`ausschuss_menge_${a}_${i}`).value || '0';
+        const grund = formElement(`ausschuss_grund_${a}_${i}`).value;
+        const det = formElement(`ausschuss_details_${a}_${i}`).value;
+
+        if ((menge !== '0' && menge !== '') || grund !== 'Kein Ausschuss' || det !== '') {
+          ausschussBlockHTML += `
+            <div style="margin-bottom: 3px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px;">
+              <b>Menge:</b> <span style="color:#dc2626; font-weight:bold;">${menge}</span> | <b>Ursache:</b> ${grund}
+              ${det ? `<br><i>${det}</i>` : ''}
+            </div>
+          `;
+        }
+      }
+
+      if (!ausschussBlockHTML) {
+        ausschussBlockHTML = '<div class="pdf-val">Kein Ausschuss</div>';
+      }
 
       anlagenHTML += `
         <div class="pdf-anlage-card">
@@ -296,15 +434,15 @@
           <div class="pdf-card-body">
             
             <div class="pdf-block">
-              <div class="pdf-block-title red">Ausschuss (${aMenge})</div>
-              <div class="pdf-val"><b>Grund:</b> ${aGrund}</div>
-              <div class="pdf-val"><b>Details:</b> ${aDet}</div>
+              <div class="pdf-block-title green">Produktion</div>
+              <div class="pdf-val"><b>Gut-Menge:</b> ${gutMenge}</div>
+              <div class="pdf-val"><b>Artikel-Nr:</b> ${artAkt}</div>
+              <div class="pdf-val"><b>Folge-Art.:</b> ${artFolge}</div>
             </div>
 
             <div class="pdf-block">
-              <div class="pdf-block-title">Aufträge</div>
-              <div class="pdf-val"><b>Aktuell:</b> ${aktAuf}</div>
-              <div class="pdf-val"><b>Folge:</b> ${folgAuf}</div>
+              <div class="pdf-block-title red">Ausschuss & Ursachen</div>
+              ${ausschussBlockHTML}
             </div>
 
             <div class="pdf-block">
@@ -329,7 +467,7 @@
         <div class="pdf-header">
           <div>
             <h2>SCHICHTBUCH PROTOKOLL</h2>
-            <div style="font-size: 9pt; opacity: 0.8;">Bandgalvanik Gesamtbericht</div>
+            <div style="font-size: 8.5pt; opacity: 0.8;">Bandgalvanik Gesamtbericht</div>
           </div>
           <div class="badge">${schichtVal.toUpperCase()}</div>
         </div>
@@ -383,7 +521,6 @@
     btn.innerText = "PDF Erstellen & Öffnen";
     btn.style.opacity = "1";
 
-    // Direkt im Browser/iPhone anzeigen
     window.location.href = pdfUrl;
   }
 </script>
