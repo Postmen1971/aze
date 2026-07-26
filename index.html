@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Schichtbuch Bandgalvanik</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Stabile Bibliotheken für PDF-Generierung -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg-color: #121824;
@@ -40,20 +42,31 @@
     .anlage-content { display: none; }
     .anlage-content.active { display: block; }
 
-    .btn-submit { width: 100%; padding: 14px; background: var(--accent-green); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-    /* Unsichtbares Render-Template */
-    #pdf-template { position: absolute; left: -9999px; top: -9999px; width: 1000px; background: #ffffff; color: #000000; padding: 20px; font-family: Arial, sans-serif; }
-    #pdf-template h2 { text-align: center; margin-bottom: 8px; font-size: 14pt; border-bottom: 2px solid #000; padding-bottom: 5px; }
-    #pdf-template table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    #pdf-template th, #pdf-template td { border: 1px solid #444; padding: 6px; text-align: left; vertical-align: top; font-size: 8.5pt; }
-    #pdf-template th { background-color: #f0f0f0; font-weight: bold; }
-    .pdf-ausschuss { color: #b91c1c; }
+    /* PDF Druckvorlage - Sichtbar auf separater Render-Ebene */
+    #pdf-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1000px;
+      background: #ffffff;
+      color: #000000;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      visibility: hidden;
+    }
+
+    #pdf-wrapper h2 { text-align: center; font-size: 14pt; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 4px; }
+    #pdf-wrapper table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    #pdf-wrapper th, #pdf-wrapper td { border: 1px solid #333; padding: 6px; text-align: left; vertical-align: top; font-size: 8.5pt; word-wrap: break-word; }
+    #pdf-wrapper th { background-color: #e5e7eb; font-weight: bold; }
+    .pdf-red { color: #dc2626; font-weight: bold; }
   </style>
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="main-form">
   <h1>Schichtbuch Bandgalvanik</h1>
 
   <div class="card">
@@ -140,15 +153,16 @@
       });
     </script>
 
-    <button type="button" id="submitBtn" class="btn-submit" onclick="processPDF()">
-      PDF Erstellen & Mail Öffnen
+    <button type="button" id="submitBtn" class="btn-submit" onclick="openPDF()">
+      PDF Erstellen & Ansehen
     </button>
   </form>
 </div>
 
-<div id="pdf-template">
+<!-- DIESES ELEMENT WIRD FÜR DAS PDF BEFÜLLT -->
+<div id="pdf-wrapper">
   <h2>SCHICHTBUCH PROTOKOLL - BANDGALVANIK</h2>
-  <div style="margin-bottom: 12px; font-size: 9.5pt;">
+  <div style="margin-bottom: 10px; font-size: 10pt;">
     <strong>Datum:</strong> <span id="pdf-datum"></span> | 
     <strong>Schicht:</strong> <span id="pdf-schicht"></span> | 
     <strong>Schichtführer:</strong> <span id="pdf-bediener"></span>
@@ -168,9 +182,6 @@
 </div>
 
 <script>
-  // TRAGE HIER DEINE 3 MALE-ADRESSEN EIN (Kommagetrennt):
-  const EMPFAENGER = "adresse1@firma.de,adresse2@firma.de,adresse3@firma.de";
-
   document.getElementById('datum').valueAsDate = new Date();
 
   function showAnlage(anl, event) {
@@ -180,10 +191,12 @@
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
-  async function processPDF() {
+  async function openPDF() {
     const btn = document.getElementById('submitBtn');
-    btn.innerText = "Erstelle PDF...";
+    btn.innerText = "PDF wird generiert...";
+    btn.style.opacity = "0.5";
 
+    // 1. Daten ausfüllen
     const datumVal = document.getElementById('datum').value || '-';
     const schichtVal = document.getElementById('schicht').value;
     const bedienerVal = document.getElementById('bediener').value || '-';
@@ -215,7 +228,7 @@
       tbody.innerHTML += `
         <tr>
           <td><b>Anlage ${a}</b></td>
-          <td class="pdf-ausschuss"><b>Menge:</b> ${aMenge}<br><b>Grund:</b> ${aGrund}<br>${aDet ? '<i>'+aDet+'</i>' : ''}</td>
+          <td class="pdf-red">Menge: ${aMenge}<br>Grund: ${aGrund}<br>${aDet ? '<i>'+aDet+'</i>' : ''}</td>
           <td><b>Akt:</b> ${aktAuf}<br><b>Folge:</b> ${folgAuf}</td>
           <td>${stationenText}</td>
           <td>${todo}</td>
@@ -223,32 +236,43 @@
       `;
     });
 
-    const element = document.getElementById('pdf-template');
-    const filename = `Schichtprotokoll_${schichtVal}_${datumVal}.pdf`;
+    // 2. Element sichtbar schalten, damit der Canvas-Render-Prozess den Text sicher erfasst
+    const pdfElement = document.getElementById('pdf-wrapper');
+    pdfElement.style.visibility = 'visible';
 
-    const opt = {
-      margin:       0.3,
-      filename:     filename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
-    };
+    try {
+      const canvas = await html2canvas(pdfElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
 
-    // 1. PDF herunterladen
-    await html2pdf().set(opt).from(element).save();
-
-    btn.innerText = "PDF Erstellen & Mail Öffnen";
-
-    // 2. Benutzer-Anweisung & Mail-App aufrufen
-    setTimeout(() => {
-      alert("PDF wurde heruntergeladen!\n\nTippe gleich in der Mail-App einfach auf die Büroklammer/Anhang, um die heruntergeladene PDF anzuhängen.");
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const { jsPDF } = window.jspdf;
       
-      const subject = encodeURIComponent(`Schichtprotokoll ${schichtVal} - ${datumVal}`);
-      const body = encodeURIComponent(`Hallo zusammen,\n\nanbei befindet sich das Schichtprotokoll vom ${datumVal} (${schichtVal}).\n\nSchichtführer: ${bedienerVal}`);
-      
-      // Öffnet die Mail-App mit Empfängern, Betreff und Text
-      window.location.href = `mailto:${EMPFAENGER}?subject=${subject}&body=${body}`;
-    }, 1000);
+      const pdf = new jsPDF('landscape', 'pt', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 10, pdfWidth, pdfHeight);
+
+      // PDF als direkten Blob-Stream erzeugen
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+
+      pdfElement.style.visibility = 'hidden';
+
+      // Öffnet die fertige PDF direkt im aktuellen Fenster
+      window.location.href = pdfUrl;
+
+    } catch (err) {
+      alert("Fehler beim Erstellen der PDF: " + err);
+      pdfElement.style.visibility = 'hidden';
+    } finally {
+      btn.innerText = "PDF Erstellen & Ansehen";
+      btn.style.opacity = "1";
+    }
   }
 </script>
 
