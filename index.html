@@ -44,9 +44,23 @@
 
     .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
     .btn-reset { width: 100%; padding: 10px; background: #374151; color: var(--text-muted); border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .btn-archive { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
 
     .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
     .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
+
+    /* Modal / Archiv CSS */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
+    .modal-content { background: var(--card-bg); border-radius: 10px; width: 100%; max-width: 450px; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid var(--border-color); padding: 15px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .modal-title { font-size: 1.1rem; font-weight: bold; color: #fff; }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .archive-list { overflow-y: auto; flex: 1; margin-bottom: 10px; }
+    .archive-item { background: #111827; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .archive-item:hover { border-color: var(--accent-blue); }
+    .archive-info { font-size: 0.85rem; }
+    .archive-date { font-weight: bold; color: var(--accent-blue); }
+    .btn-load { background: var(--accent-green); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
 
     /* =========================================================
        PDF DESIGN (A4 Querformat: 1123px x 794px)
@@ -165,6 +179,10 @@
 
 <div class="container" id="main-form">
   <h1>Schichtbuch Bandgalvanik</h1>
+
+  <button type="button" class="btn-archive" onclick="openArchiveModal()">
+    📁 Schichtbuch-Archiv (letzte 50 Einträge)
+  </button>
 
   <div class="card">
     <div class="card-title">Schichtdaten</div>
@@ -302,9 +320,22 @@
       PDF Erstellen & Öffnen
     </button>
     <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
-      Neues Protokoll starten (Artikel-Nr. behalten)
+      Neues Protokoll starten (Archivieren & Zurückstellen)
     </button>
   </form>
+</div>
+
+<!-- ARCHIV MODAL -->
+<div id="archiveModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Schichtbuch-Archiv</div>
+      <button class="modal-close" onclick="closeArchiveModal()">&times;</button>
+    </div>
+    <div class="archive-list" id="archiveList">
+      <!-- Dynamische Liste -->
+    </div>
+  </div>
 </div>
 
 <div id="pdf-container"></div>
@@ -322,6 +353,15 @@
 
   // Auto-Save in LocalStorage bei jeder Eingabe
   const formElement = id => document.getElementById(id);
+
+  function getCurrentFormData() {
+    const data = {};
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      if (el.id) data[el.id] = el.value;
+    });
+    return data;
+  }
 
   function saveToLocalStorage() {
     const inputs = document.querySelectorAll('input, select, textarea');
@@ -345,6 +385,97 @@
     }
   }
 
+  // ARCHIV LOGIK
+  function archiveCurrentState() {
+    let archive = [];
+    try {
+      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
+    } catch (e) { archive = []; }
+
+    const currentData = getCurrentFormData();
+    
+    // Prüfen, ob wenigstens ein Grundinhalt existiert
+    const datum = currentData.datum || new Date().toISOString().split('T')[0];
+    const schicht = currentData.schicht || 'Unbekannt';
+    const bediener = currentData.bediener || 'Kein Name';
+
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleString('de-DE'),
+      datum: datum,
+      schicht: schicht,
+      bediener: bediener,
+      formData: currentData
+    };
+
+    // Am Anfang einfügen (neueste zuerst)
+    archive.unshift(entry);
+
+    // Maximal 50 Einträge behalten
+    if (archive.length > 50) {
+      archive = archive.slice(0, 50);
+    }
+
+    localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
+  }
+
+  function openArchiveModal() {
+    const modal = document.getElementById('archiveModal');
+    const list = document.getElementById('archiveList');
+    list.innerHTML = '';
+
+    let archive = [];
+    try {
+      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
+    } catch (e) { archive = []; }
+
+    if (archive.length === 0) {
+      list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Keine archivierten Schichten vorhanden.</div>';
+    } else {
+      archive.forEach((item) => {
+        const el = document.createElement('div');
+        el.className = 'archive-item';
+        el.innerHTML = `
+          <div class="archive-info">
+            <div class="archive-date">${item.datum} - ${item.schicht}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem;">Bediener: ${item.bediener}</div>
+            <div style="color:#6b7280; font-size:0.7rem;">Archiviert: ${item.timestamp}</div>
+          </div>
+          <button class="btn-load" onclick="loadArchiveEntry(${item.id})">In Formular laden & bearbeiten</button>
+        `;
+        list.appendChild(el);
+      });
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeArchiveModal() {
+    document.getElementById('archiveModal').style.display = 'none';
+  }
+
+  function loadArchiveEntry(id) {
+    let archive = [];
+    try {
+      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
+    } catch (e) { archive = []; }
+
+    const entry = archive.find(e => e.id === id);
+    if (entry && entry.formData) {
+      if (confirm(`Möchtest du die Schicht vom ${entry.datum} (${entry.schicht}) in das Formular laden? Aktuelle ungespeicherte Eingaben werden überschrieben.`)) {
+        Object.keys(entry.formData).forEach(key => {
+          const field = document.getElementById(key);
+          if (field) {
+            field.value = entry.formData[key];
+          }
+        });
+        saveToLocalStorage();
+        closeArchiveModal();
+        alert("Eintrag erfolgreich geladen. Du kannst ihn jetzt bearbeiten oder neu als PDF ausdrucken.");
+      }
+    }
+  }
+
   // Event Listener für Auto-Save anhängen
   document.addEventListener('DOMContentLoaded', () => {
     loadFromLocalStorage();
@@ -354,9 +485,13 @@
     });
   });
 
-  // Neues Protokoll starten: Datum auf heute, Felder leeren, aber Artikelnummern behalten
+  // Neues Protokoll starten: Archivieren, Datum auf heute, Felder leeren, aber Artikelnummern behalten
   function resetFormKeepArtikel() {
-    if (confirm("Möchtest du ein neues Protokoll starten? Alle Felder werden geleert, aber die Artikelnummern bleiben erhalten.")) {
+    if (confirm("Möchtest du diese Schicht archivieren und ein neues Protokoll starten? Das alte Protokoll bleibt im Archiv erhalten.")) {
+      
+      // Zuerst aktuelles Protokoll archivieren
+      archiveCurrentState();
+
       const savedArtAkt = {};
       const savedArtFolge = {};
 
@@ -365,9 +500,11 @@
         savedArtFolge[a] = formElement(`art_folge_${a}`).value;
       });
 
-      // LocalStorage löschen
+      // Formular-LocalStorage löschen (Archiv behalten)
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('schichtbuch_')) localStorage.removeItem(key);
+        if (key.startsWith('schichtbuch_') && key !== 'schichtbuch_archive') {
+          localStorage.removeItem(key);
+        }
       });
 
       // Formular zurücksetzen
@@ -381,7 +518,7 @@
       });
 
       saveToLocalStorage();
-      alert("Neues Formular bereit. Datum wurde aktualisiert!");
+      alert("Schicht wurde erfolgreich archiviert! Neues Formular ist bereit.");
     }
   }
 
@@ -527,3 +664,4 @@
 
 </body>
 </html>
+
