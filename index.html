@@ -111,10 +111,18 @@
             margin-bottom: 10px;
         }
 
+        .ausschuss-item {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--danger-color);
+        }
+
         .rate-badge {
             background-color: var(--danger-color);
             color: #fff;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 4px;
             font-weight: bold;
             display: inline-block;
@@ -147,7 +155,7 @@
             cursor: pointer;
         }
 
-        /* VERSTECKTE PRINT/PDF-VORLAGE (A4 Querformat Design) */
+        /* UNSIHTBARE PDF VORLAGE (A4 Querformat) */
         #pdf-template {
             position: absolute;
             left: -9999px;
@@ -271,7 +279,7 @@
             "Sonstiges"
         ];
 
-        let loadedHistoryIndex = null; // Speichert, ob aktuell eine alte Schicht geladen ist
+        let loadedHistoryIndex = null;
 
         // Formular-Felder dynamisch erzeugen
         function buildForm() {
@@ -285,7 +293,7 @@
                 container.innerHTML += `
                     <div id="tab-${a}" class="tab-content ${activeClass}">
                         <div class="global-card">
-                            <div class="section-title">Auftragsdaten (A ${a})</div>
+                            <div class="section-title">Auftragsdaten (Anlage ${a})</div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label>Aktuelle Artikel-Nr.</label>
@@ -297,49 +305,67 @@
                                 </div>
                             </div>
 
-                            <div class="section-title">Mengen & Ausschuss</div>
+                            <div class="section-title">Mengen & Ausschuss (Schlechte Teile)</div>
                             <div class="ausschuss-box">
                                 <div class="form-group">
                                     <label>Gut-Menge (m / Stk)</label>
                                     <input type="number" id="gut_menge_${a}" placeholder="0" oninput="calcLoss('${a}')">
                                 </div>
                                 
-                                <div style="margin-top: 10px; font-weight: bold; font-size: 11px; color: #fca5a5;">Ausschuss Meldungen (bis zu 3)</div>
+                                <div style="margin-top: 10px; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: #fca5a5;">Ausschuss & Ursachen (bis zu 3 Angaben)</div>
                                 
-                                <div class="grid-2" style="margin-top: 4px;">
-                                    <div>
-                                        <label>Ursache 1</label>
-                                        <select id="ausschuss_u1_${a}">${ursachenHTML}</select>
+                                <div class="ausschuss-item">
+                                    <div class="grid-2">
+                                        <div>
+                                            <label>Hauptursache 1</label>
+                                            <select id="ausschuss_u1_${a}">${ursachenHTML}</select>
+                                        </div>
+                                        <div>
+                                            <label>Ausschuss-Menge 1</label>
+                                            <input type="number" id="ausschuss_m1_${a}" placeholder="0" oninput="calcLoss('${a}')">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label>Menge 1</label>
-                                        <input type="number" id="ausschuss_m1_${a}" placeholder="0" oninput="calcLoss('${a}')">
-                                    </div>
-                                </div>
-
-                                <div class="grid-2" style="margin-top: 4px;">
-                                    <div>
-                                        <label>Ursache 2</label>
-                                        <select id="ausschuss_u2_${a}">${ursachenHTML}</select>
-                                    </div>
-                                    <div>
-                                        <label>Menge 2</label>
-                                        <input type="number" id="ausschuss_m2_${a}" placeholder="0" oninput="calcLoss('${a}')">
+                                    <div style="margin-top: 4px;">
+                                        <label>Bemerkung / Detail zu Ursache 1</label>
+                                        <input type="text" id="ausschuss_b1_${a}" placeholder="z. B. Stanzwerkzeug beschädigt">
                                     </div>
                                 </div>
 
-                                <div class="grid-2" style="margin-top: 4px;">
-                                    <div>
-                                        <label>Ursache 3</label>
-                                        <select id="ausschuss_u3_${a}">${ursachenHTML}</select>
+                                <div class="ausschuss-item">
+                                    <div class="grid-2">
+                                        <div>
+                                            <label>Hauptursache 2</label>
+                                            <select id="ausschuss_u2_${a}">${ursachenHTML}</select>
+                                        </div>
+                                        <div>
+                                            <label>Ausschuss-Menge 2</label>
+                                            <input type="number" id="ausschuss_m2_${a}" placeholder="0" oninput="calcLoss('${a}')">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label>Menge 3</label>
-                                        <input type="number" id="ausschuss_m3_${a}" placeholder="0" oninput="calcLoss('${a}')">
+                                    <div style="margin-top: 4px;">
+                                        <label>Bemerkung / Detail zu Ursache 2</label>
+                                        <input type="text" id="ausschuss_b2_${a}" placeholder="z. B. Flecken nach E-Clean">
                                     </div>
                                 </div>
 
-                                <div id="rate_badge_${a}" class="rate-badge">Ausschussquote: 0.0%</div>
+                                <div class="ausschuss-item">
+                                    <div class="grid-2">
+                                        <div>
+                                            <label>Hauptursache 3</label>
+                                            <select id="ausschuss_u3_${a}">${ursachenHTML}</select>
+                                        </div>
+                                        <div>
+                                            <label>Ausschuss-Menge 3</label>
+                                            <input type="number" id="ausschuss_m3_${a}" placeholder="0" oninput="calcLoss('${a}')">
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 4px;">
+                                        <label>Bemerkung / Detail zu Ursache 3</label>
+                                        <input type="text" id="ausschuss_b3_${a}" placeholder="z. B. Bandriss bei Speicher">
+                                    </div>
+                                </div>
+
+                                <div id="rate_badge_${a}" class="rate-badge">Ausschussquote: 0.0% (Ausschuss: 0)</div>
                             </div>
 
                             <div class="section-title">To-Do für Folgeschicht</div>
@@ -382,7 +408,7 @@
             }
 
             const badge = document.getElementById(`rate_badge_${a}`);
-            badge.innerText = `Ausschussquote: ${quote}% (Gesamt: ${gesamtAusschuss})`;
+            badge.innerText = `Ausschussquote: ${quote}% (Ausschuss: ${gesamtAusschuss})`;
             
             saveCurrentState();
         }
@@ -409,10 +435,13 @@
                     gut_menge: document.getElementById(`gut_menge_${a}`).value,
                     u1: document.getElementById(`ausschuss_u1_${a}`).value,
                     m1: document.getElementById(`ausschuss_m1_${a}`).value,
+                    b1: document.getElementById(`ausschuss_b1_${a}`).value,
                     u2: document.getElementById(`ausschuss_u2_${a}`).value,
                     m2: document.getElementById(`ausschuss_m2_${a}`).value,
+                    b2: document.getElementById(`ausschuss_b2_${a}`).value,
                     u3: document.getElementById(`ausschuss_u3_${a}`).value,
                     m3: document.getElementById(`ausschuss_m3_${a}`).value,
+                    b3: document.getElementById(`ausschuss_b3_${a}`).value,
                     todo: document.getElementById(`todo_${a}`).value,
                     defekte: document.getElementById(`defekte_${a}`).value
                 };
@@ -435,12 +464,19 @@
                         document.getElementById(`art_akt_${a}`).value = ad.art_akt || '';
                         document.getElementById(`art_folge_${a}`).value = ad.art_folge || '';
                         document.getElementById(`gut_menge_${a}`).value = ad.gut_menge || '';
+                        
                         document.getElementById(`ausschuss_u1_${a}`).value = ad.u1 || 'Kein Fehler';
                         document.getElementById(`ausschuss_m1_${a}`).value = ad.m1 || '';
+                        document.getElementById(`ausschuss_b1_${a}`).value = ad.b1 || '';
+
                         document.getElementById(`ausschuss_u2_${a}`).value = ad.u2 || 'Kein Fehler';
                         document.getElementById(`ausschuss_m2_${a}`).value = ad.m2 || '';
+                        document.getElementById(`ausschuss_b2_${a}`).value = ad.b2 || '';
+
                         document.getElementById(`ausschuss_u3_${a}`).value = ad.u3 || 'Kein Fehler';
                         document.getElementById(`ausschuss_m3_${a}`).value = ad.m3 || '';
+                        document.getElementById(`ausschuss_b3_${a}`).value = ad.b3 || '';
+
                         document.getElementById(`todo_${a}`).value = ad.todo || '';
                         document.getElementById(`defekte_${a}`).value = ad.defekte || '';
                         calcLoss(a);
@@ -457,7 +493,6 @@
                 return;
             }
 
-            // Aktuellen Stand sichern vor dem Wechsel
             saveCurrentState();
 
             const targetData = history[history.length - offset];
@@ -473,7 +508,7 @@
         function pushToHistory(data) {
             let history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
             history.push(data);
-            if (history.length > 5) history.shift(); // Maximal 5 Schichten sichern
+            if (history.length > 5) history.shift();
             localStorage.setItem('schichtbuch_history', JSON.stringify(history));
         }
 
@@ -484,18 +519,19 @@
                 pushToHistory(currentData);
             }
 
-            // Letzte Artikelnummern & Bediener merken
             const lastBediener = document.getElementById('schichtfuehrer').value;
             let lastArticles = {};
             anlagen.forEach(a => {
                 lastArticles[a] = document.getElementById(`art_akt_${a}`).value;
             });
 
-            // Felder leeren
-            document.querySelectorAll('input[type="number"], textarea').forEach(i => i.value = '');
+            document.querySelectorAll('input[type="number"], input[type="text"], textarea').forEach(i => {
+                if (i.id !== 'schichtfuehrer' && !i.id.startsWith('art_akt_')) {
+                    i.value = '';
+                }
+            });
             document.querySelectorAll('select[id^="ausschuss_u"]').forEach(s => s.value = 'Kein Fehler');
 
-            // Behaltene Werte wieder einsetzen
             document.getElementById('schichtfuehrer').value = lastBediener;
             document.getElementById('datum').valueAsDate = new Date();
             
@@ -513,10 +549,8 @@
         function generatePDFAndOpen() {
             const formData = collectFormData();
             
-            // In Historie speichern
             pushToHistory(formData);
 
-            // Template befüllen
             document.getElementById('pdf-meta-info').innerText = `Datum: ${formData.datum} | Schicht: ${formData.schicht} | Bediener: ${formData.schichtfuehrer || '-'}`;
             document.getElementById('pdf-created-time').innerText = new Date().toLocaleString('de-DE');
 
@@ -534,10 +568,10 @@
                 const quote = gesamt > 0 ? ((totalAusschuss / gesamt) * 100).toFixed(1) : '0.0';
 
                 let errorsHTML = '';
-                if (m1 > 0) errorsHTML += `<div>• ${ad.u1}: <b>${m1}</b></div>`;
-                if (m2 > 0) errorsHTML += `<div>• ${ad.u2}: <b>${m2}</b></div>`;
-                if (m3 > 0) errorsHTML += `<div>• ${ad.u3}: <b>${m3}</b></div>`;
-                if (!errorsHTML) errorsHTML = '<div>Keine Fehler</div>';
+                if (m1 > 0) errorsHTML += `<div>• <b>${ad.u1}</b>: ${m1} Stk ${ad.b1 ? '(' + ad.b1 + ')' : ''}</div>`;
+                if (m2 > 0) errorsHTML += `<div>• <b>${ad.u2}</b>: ${m2} Stk ${ad.b2 ? '(' + ad.b2 + ')' : ''}</div>`;
+                if (m3 > 0) errorsHTML += `<div>• <b>${ad.u3}</b>: ${m3} Stk ${ad.b3 ? '(' + ad.b3 + ')' : ''}</div>`;
+                if (!errorsHTML) errorsHTML = '<div>Kein Ausschuss</div>';
 
                 grid.innerHTML += `
                     <div class="pdf-col">
@@ -549,13 +583,13 @@
                         </div>
 
                         <div class="pdf-section">
-                            <div class="pdf-label">Gut-Menge / Ausschuss:</div>
+                            <div class="pdf-label">Mengen & Quote:</div>
                             <div class="pdf-val">Gut: <b>${ad.gut_menge || '0'}</b> | Auss.: <span class="pdf-badge-red">${totalAusschuss}</span></div>
-                            <div class="pdf-val">Ausschussquote: <b class="pdf-badge-red">${quote}%</b></div>
+                            <div class="pdf-val">Quote: <b class="pdf-badge-red">${quote}%</b></div>
                         </div>
 
                         <div class="pdf-section">
-                            <div class="pdf-label">Ausschuss-Details:</div>
+                            <div class="pdf-label">Ausschuss & Ursachen:</div>
                             <div class="pdf-val">${errorsHTML}</div>
                         </div>
 
@@ -572,7 +606,6 @@
                 `;
             });
 
-            // html2pdf Optionen
             const element = document.getElementById('pdf-template');
             const opt = {
                 margin:       [8, 8, 8, 8],
@@ -582,25 +615,19 @@
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            // PDF generieren & direkt im Browser-Tab anzeigen
             html2pdf().set(opt).from(element).outputPdf('bloburl').then(function(pdfUrl) {
                 window.open(pdfUrl, '_blank');
             });
         }
 
-        // Event-Listener für Live-Speicherung bei Texteingaben
         document.addEventListener('input', function(e) {
             saveCurrentState();
         });
 
-        // Initialisierung beim Laden der Seite
         window.onload = function() {
             buildForm();
-            
-            // Datum auf heute setzen
             document.getElementById('datum').valueAsDate = new Date();
 
-            // Evtl. gespeicherten Stand wiederherstellen
             const saved = localStorage.getItem('schichtbuch_current');
             if (saved) {
                 populateForm(JSON.parse(saved));
