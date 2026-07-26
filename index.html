@@ -1,213 +1,411 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Garzeit & Kerntemperatur Rechner</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Schichtbuch Bandgalvanik</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f0f4f8;
-      padding: 20px;
+    :root {
+      --bg-color: #121824;
+      --card-bg: #1e2638;
+      --accent-red: #ff4d4d;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: #374151;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      color: #333;
-      font-size: 18px;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 10px;
+      font-size: 14px;
     }
 
     .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      max-width: 480px;
+      margin: 0 auto;
     }
 
     h1 {
+      font-size: 1.3rem;
       text-align: center;
-      font-size: 28px;
-      margin-bottom: 30px;
+      margin-bottom: 12px;
+      color: #ffffff;
     }
 
-    label {
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
       font-weight: bold;
-      margin-top: 15px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid var(--accent-blue);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title.red { border-bottom-color: var(--accent-red); }
+    .card-title.green { border-bottom-color: var(--accent-green); }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      margin-bottom: 3px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      background: #111827;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent-blue);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 55px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Tabs für Anlagen */
+    .tab-container {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: #1f2937;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+      border-color: var(--accent-blue);
+    }
+
+    .anlage-content {
+      display: none;
+    }
+
+    .anlage-content.active {
       display: block;
     }
 
-    select, input, button {
+    /* Formular Sende-Button */
+    .btn-submit {
       width: 100%;
       padding: 14px;
-      font-size: 18px;
-      margin-top: 8px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      box-sizing: border-box;
-    }
-
-    button {
-      background-color: #2e8b57;
-      color: white;
-      margin-top: 20px;
-      cursor: pointer;
+      background: var(--accent-green);
+      color: #fff;
       border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
 
-    button:hover {
-      background-color: #276f48;
+    .btn-submit:active {
+      opacity: 0.8;
     }
 
-    .result {
-      margin-top: 30px;
-      padding: 20px;
-      background: #e0f7e9;
-      border-left: 6px solid #2e8b57;
-      border-radius: 10px;
-      font-size: 20px;
+    /* PDF Druck-Layout (Unsichtbar im Formular, wird für PDF generiert) */
+    #pdf-template {
+      display: none;
+      background: #ffffff;
+      color: #000000;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+    }
+
+    #pdf-template h2 {
+      text-align: center;
+      margin-bottom: 5px;
+      font-size: 14pt;
+      border-bottom: 2px solid #000;
+      padding-bottom: 5px;
+    }
+
+    #pdf-template table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    #pdf-template th, #pdf-template td {
+      border: 1px solid #666;
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 8.5pt;
+    }
+
+    #pdf-template th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .pdf-header-info {
+      margin-bottom: 10px;
+      font-size: 9.5pt;
+    }
+
+    .pdf-ausschuss {
+      color: #b91c1c;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Garzeit & Kerntemperatur Rechner</h1>
 
-    <label for="methode">Garmethode:</label>
-    <select id="methode">
-      <option value="braten">Braten</option>
-      <option value="sousvide">Sous-vide</option>
-    </select>
+<div class="container">
+  <h1>Schichtbuch Bandgalvanik</h1>
 
-    <label for="lebensmittel">Lebensmittel:</label>
-    <select id="lebensmittel" onchange="zeigeGarstufen()">
-      <option value="steak">Rindersteak</option>
-      <option value="rinderkotelett">Rinderkotelett</option>
-      <option value="rinderbraten">Rinderbraten</option>
-      <option value="rinderrippen">Rinderrippen</option>
-      <option value="schweinebraten">Schweinebraten</option>
-      <option value="schweinesteak">Schweinesteak</option>
-      <option value="schweinenacken">Schweinenacken</option>
-      <option value="hähnchenschenkel">Hähnchenschenkel</option>
-      <option value="hähnchenbrust">Hähnchenbrust</option>
-      <option value="forelle">Forelle</option>
-      <option value="dorade">Dorade</option>
-      <option value="makrele">Makrele</option>
-      <option value="wolfsbarsch">Wolfsbarsch</option>
-    </select>
-
-    <div id="garstufe-container" style="display: none;">
-      <label for="garstufe">Garstufe:</label>
-      <select id="garstufe"></select>
+  <div class="card">
+    <div class="card-title">Schichtdaten</div>
+    <div class="grid-2">
+      <div>
+        <label for="datum">Datum</label>
+        <input type="date" id="datum">
+      </div>
+      <div>
+        <label for="schicht">Schicht</label>
+        <select id="schicht">
+          <option value="Frühschicht">Frühschicht</option>
+          <option value="Spätschicht">Spätschicht</option>
+          <option value="Nachtschicht">Nachtschicht</option>
+        </select>
+      </div>
     </div>
-
-    <label for="dicke">Dicke in cm:</label>
-    <input type="number" id="dicke" placeholder="z. B. 2.5" min="0.5" step="0.1" />
-
-    <button onclick="berechne()">Berechnen</button>
-
-    <div class="result" id="ausgabe"></div>
+    <label for="bediener">Schichtführer / Bediener</label>
+    <input type="text" id="bediener" placeholder="Name(n) eintragen">
   </div>
 
-  <script>
-    const kerntemperaturen = {
-      steak: { rare: 50, medium: 57, well: 65 },
-      rinderkotelett: { rare: 52, medium: 58, well: 65 },
-      rinderbraten: { medium: 60, well: 70 },
-      rinderrippen: { well: 85 },
-      schweinebraten: { well: 75 },
-      schweinesteak: { rosa: 65, well: 70 },
-      schweinenacken: { rosa: 65, well: 75 },
-      hähnchenschenkel: { durch: 82 },
-      hähnchenbrust: { durch: 75 },
-      forelle: { glasig: 56, durch: 60 },
-      dorade: { glasig: 56, durch: 60 },
-      makrele: { glasig: 58, durch: 62 },
-      wolfsbarsch: { glasig: 56, durch: 60 }
+  <div class="tab-container">
+    <button class="tab-btn active" onclick="showAnlage('801')">A 801</button>
+    <button class="tab-btn" onclick="showAnlage('802')">A 802</button>
+    <button class="tab-btn" onclick="showAnlage('803')">A 803</button>
+    <button class="tab-btn" onclick="showAnlage('804')">A 804</button>
+  </div>
+
+  <form id="schichtForm">
+    
+    <script>
+      const anlagen = ['801', '802', '803', '804'];
+      anlagen.forEach((a, index) => {
+        document.write(`
+          <div id="anlage-${a}" class="anlage-content ${index === 0 ? 'active' : ''}">
+            
+            <div class="card">
+              <div class="card-title red">Ausschuss - Anlage ${a}</div>
+              <div class="grid-2">
+                <div>
+                  <label>Menge (m / Stk)</label>
+                  <input type="text" id="ausschuss_menge_${a}" placeholder="0">
+                </div>
+                <div>
+                  <label>Hauptursache</label>
+                  <select id="ausschuss_grund_${a}">
+                    <option value="Kein Ausschuss">Kein Ausschuss</option>
+                    <option value="Schweißnaht gerissen">Schweißnaht gerissen</option>
+                    <option value="Beschichtungsfehler">Beschichtungsfehler</option>
+                    <option value="Bandstillstand">Bandstillstand</option>
+                    <option value="Mechanischer Defekt">Mechanischer Defekt</option>
+                    <option value="Reinigungsfehler / Flecken">Reinigungsfehler / Flecken</option>
+                    <option value="Sonstiges">Sonstiges</option>
+                  </select>
+                </div>
+              </div>
+              <label>Ursache & Details zum Ausschuss</label>
+              <textarea id="ausschuss_details_${a}" placeholder="Warum ist der Ausschuss entstanden?"></textarea>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Aufträge</div>
+              <label>Aktueller Auftrag</label>
+              <input type="text" id="auftrag_akt_${a}" placeholder="Teilenummer / Auftrag">
+              <label>Bekannter Folgeauftrag</label>
+              <input type="text" id="auftrag_folge_${a}" placeholder="Nächster Auftrag">
+            </div>
+
+            <div class="card">
+              <div class="card-title green">To-Do für Folgeschicht</div>
+              <textarea id="todo_${a}" placeholder="Was muss die nächste Schicht erledigen?"></textarea>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Stationen & Besonderheiten</div>
+              <label>Auffälligkeiten an den Stationen</label>
+              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean, E-Clean, Nickel, Palladium, U-Turm, Gold, Zinn, Befettung..."></textarea>
+
+              <label>Defekte & technische Störungen</label>
+              <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
+
+              <label>Fehlendes Werkzeug / Materialien / KVP</label>
+              <textarea id="material_${a}" placeholder="Bestellungen, fehlende Teile, Verbesserungen"></textarea>
+            </div>
+
+          </div>
+        `);
+      });
+    </script>
+
+    <button type="button" class="btn-submit" onclick="generatePDF()">Protokoll als PDF erstellen & senden</button>
+  </form>
+
+</div>
+
+<div id="pdf-template">
+  <h2>SCHICHTBUCH PROTOKOLL - BANDGALVANIK</h2>
+  
+  <div class="pdf-header-info">
+    <strong>Datum:</strong> <span id="pdf-datum"></span> | 
+    <strong>Schicht:</strong> <span id="pdf-schicht"></span> | 
+    <strong>Schichtführer:</strong> <span id="pdf-bediener"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 12%;">Anlage</th>
+        <th style="width: 23%;">Ausschuss & Ursache</th>
+        <th style="width: 20%;">Aufträge (Akt. / Folge)</th>
+        <th style="width: 25%;">Stationen / Defekte / Material</th>
+        <th style="width: 20%;">To-Do Folgeschicht</th>
+      </tr>
+    </thead>
+    <tbody id="pdf-table-body">
+      </tbody>
+  </table>
+</div>
+
+<script>
+  // Datum auf heute vorbelegen
+  document.getElementById('datum').valueAsDate = new Date();
+
+  // Tab-Wechsel Logik für iPhone
+  function showAnlage(anl) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.anlage-content').forEach(c => c.classList.remove('active'));
+
+    event.target.classList.add('active');
+    document.getElementById(`anlage-${anl}`).classList.add('active');
+  }
+
+  // PDF Erstellung Logik
+  function generatePDF() {
+    // 1. Schichtdaten übernehmen
+    document.getElementById('pdf-datum').innerText = document.getElementById('datum').value || '-';
+    document.getElementById('pdf-schicht').innerText = document.getElementById('schicht').value;
+    document.getElementById('pdf-bediener').innerText = document.getElementById('bediener').value || '-';
+
+    // 2. Tabellenzeilen für alle 4 Anlagen aufbauen
+    const tbody = document.getElementById('pdf-table-body');
+    tbody.innerHTML = '';
+
+    ['801', '802', '803', '804'].forEach(a => {
+      const aMenge = document.getElementById(`ausschuss_menge_${a}`).value || '0';
+      const aGrund = document.getElementById(`ausschuss_grund_${a}`).value;
+      const aDet = document.getElementById(`ausschuss_details_${a}`).value;
+
+      const aktAuf = document.getElementById(`auftrag_akt_${a}`).value || '-';
+      const folgAuf = document.getElementById(`auftrag_folge_${a}`).value || '-';
+
+      const todo = document.getElementById(`todo_${a}`).value || '-';
+
+      const stat = document.getElementById(`stationen_${a}`).value;
+      const def = document.getElementById(`defekte_${a}`).value;
+      const mat = document.getElementById(`material_${a}`).value;
+
+      let stationenText = '';
+      if(stat) stationenText += `<b>Stationen:</b> ${stat}<br>`;
+      if(def) stationenText += `<b>Defekte:</b> ${def}<br>`;
+      if(mat) stationenText += `<b>Material/KVP:</b> ${mat}`;
+      if(!stationenText) stationenText = 'Keine Besonderheiten';
+
+      const row = `
+        <tr>
+          <td><b>Anlage ${a}</b></td>
+          <td class="pdf-ausschuss">
+            Menge: ${aMenge}<br>
+            Grund: ${aGrund}<br>
+            ${aDet ? '<i>' + aDet + '</i>' : ''}
+          </td>
+          <td>
+            <b>Akt:</b> ${aktAuf}<br>
+            <b>Folge:</b> ${folgAuf}
+          </td>
+          <td>${stationenText}</td>
+          <td>${todo}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+
+    // 3. PDF Generieren
+    const element = document.getElementById('pdf-template');
+    element.style.display = 'block'; // Temporär einblenden für Screenshot/PDF
+
+    const opt = {
+      margin:       0.3,
+      filename:     `Schichtprotokoll_${document.getElementById('schicht').value}_${document.getElementById('datum').value}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
     };
 
-    const garstufenOptionen = {
-      steak: ['rare', 'medium', 'well'],
-      rinderkotelett: ['rare', 'medium', 'well'],
-      rinderbraten: ['medium', 'well'],
-      rinderrippen: ['well'],
-      schweinebraten: ['well'],
-      schweinesteak: ['rosa', 'well'],
-      schweinenacken: ['rosa', 'well'],
-      hähnchenschenkel: ['durch'],
-      hähnchenbrust: ['durch'],
-      forelle: ['glasig', 'durch'],
-      dorade: ['glasig', 'durch'],
-      makrele: ['glasig', 'durch'],
-      wolfsbarsch: ['glasig', 'durch']
-    };
+    html2pdf().set(opt).from(element).save().then(() => {
+      element.style.display = 'none'; // Nach Erstellung wieder ausblenden
+      
+      // Hinweis zum Versand an 3 E-Mail Adressen
+      alert("PDF wurde erfolgreich erstellt!\n\nUm die Datei automatisch an deine 3 E-Mail-Empfänger zu senden, wähle im nächsten Schritt deine Mail-App oder erstelle einen kostenlosen EmailJS-Schlüssel.");
+    });
+  }
+</script>
 
-    const garstufenTexte = {
-      rare: "Blutig",
-      medium: "Medium",
-      well: "Durch",
-      rosa: "Rosa",
-      durch: "Durch",
-      glasig: "Glasig"
-    };
-
-    function zeigeGarstufen() {
-      const lebensmittel = document.getElementById("lebensmittel").value;
-      const garstufeDiv = document.getElementById("garstufe-container");
-      const garstufeSelect = document.getElementById("garstufe");
-      const stufen = garstufenOptionen[lebensmittel];
-
-      if (stufen) {
-        garstufeDiv.style.display = "block";
-        garstufeSelect.innerHTML = "";
-        stufen.forEach(stufe => {
-          const opt = document.createElement("option");
-          opt.value = stufe;
-          opt.text = garstufenTexte[stufe] || stufe;
-          garstufeSelect.appendChild(opt);
-        });
-      } else {
-        garstufeDiv.style.display = "none";
-      }
-    }
-
-    function berechne() {
-      const methode = document.getElementById("methode").value;
-      const lebensmittel = document.getElementById("lebensmittel").value;
-      const dicke = parseFloat(document.getElementById("dicke").value);
-      const garstufeSelect = document.getElementById("garstufe");
-      const garstufe = garstufeSelect ? garstufeSelect.value : null;
-
-      if (isNaN(dicke) || dicke <= 0) {
-        document.getElementById("ausgabe").innerText = "Bitte gültige Dicke eingeben.";
-        return;
-      }
-
-      let temperatur;
-      if (garstufe && kerntemperaturen[lebensmittel][garstufe]) {
-        temperatur = kerntemperaturen[lebensmittel][garstufe];
-      } else {
-        temperatur = kerntemperaturen[lebensmittel]["well"];
-      }
-
-      let zeit;
-      if (methode === "sousvide") {
-        zeit = dicke * 60; // 1 cm = 1 Stunde
-      } else {
-        zeit = Math.round((dicke * 10) + 30);
-      }
-
-      const stufentext = garstufenTexte[garstufe] || "Durch";
-
-      let finishText = "";
-      if (methode === "sousvide") {
-        finishText = `<br><strong>Finish:</strong> Nach dem Bad bitte <u>1–2 Min. pro Seite</u> bei <u>200–250 °C</u> (Pfanne oder Grill) scharf anbraten.`;
-      }
-
-      document.getElementById("ausgabe").innerHTML =
-        `<strong>Kerntemperatur:</strong> ${temperatur} °C<br>` +
-        `<strong>Garstufe:</strong> ${stufentext}<br>` +
-        `<strong>Geschätzte Garzeit (${methode === "sousvide" ? "Sous-vide" : "Braten"}):</strong> ${Math.round(zeit)} Minuten` +
-        finishText;
-    }
-  </script>
 </body>
 </html>
