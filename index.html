@@ -1,635 +1,529 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Schichtbuch Protokoll</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #121824;
-            --card-bg: #1e2738;
-            --accent-color: #2563eb;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --border-color: #374151;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --success-color: #10b981;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Schichtbuch Bandgalvanik</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #121824;
+      --card-bg: #1e2638;
+      --accent-red: #ff4d4d;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: #374151;
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 12px; font-size: 14px; padding-bottom: 80px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-size: 14px; }
+    .container { max-width: 480px; margin: 0 auto; padding-bottom: 20px; }
+    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 12px; color: #ffffff; }
 
-        .header { text-align: center; margin-bottom: 15px; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
-        .header h1 { font-size: 18px; color: #fff; }
+    .card { background: var(--card-bg); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid var(--accent-blue); display: flex; justify-content: space-between; }
+    .card-title.red { border-bottom-color: var(--accent-red); }
+    .card-title.green { border-bottom-color: var(--accent-green); }
 
-        .history-banner {
-            display: none;
-            background-color: var(--warning-color);
-            color: #000;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-        }
+    label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 3px; }
+    input, select, textarea { width: 100%; padding: 10px; background: #111827; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
+    textarea { resize: vertical; min-height: 50px; }
 
-        .history-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        .btn-history {
-            background-color: #374151;
-            color: #fff;
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tab-container { display: flex; gap: 4px; margin-bottom: 12px; }
+    .tab-btn { flex: 1; padding: 10px 0; background: #1f2937; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; font-weight: bold; font-size: 0.85rem; cursor: pointer; text-align: center; }
+    .tab-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    
+    .anlage-content { display: none; }
+    .anlage-content.active { display: block; }
 
-        .global-card {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid var(--border-color);
-        }
-        .form-group { margin-bottom: 10px; }
-        label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
-        input, select, textarea {
-            width: 100%;
-            padding: 10px;
-            background-color: #111827;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
-        }
+    .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .btn-reset { width: 100%; padding: 10px; background: #374151; color: var(--text-muted); border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-top: 8px; }
 
-        .tabs { display: flex; gap: 4px; margin-bottom: 12px; overflow-x: auto; }
-        .tab-btn {
-            flex: 1;
-            padding: 10px 5px;
-            background-color: var(--card-bg);
-            color: var(--text-muted);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 13px;
-            text-align: center;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .tab-btn.active { background-color: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+    .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
+    .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+    /* =========================================================
+       PDF DESIGN (A4 Querformat: 1123px x 794px)
+       ========================================================= */
+    #pdf-container {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      width: 1123px;
+      background: #ffffff;
+      color: #1f2937;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
 
-        .section-title { font-size: 13px; font-weight: bold; color: #93c5fd; margin: 12px 0 6px 0; text-transform: uppercase; }
+    .pdf-page {
+      width: 1123px;
+      height: 794px;
+      padding: 25px;
+      background: #ffffff;
+      box-sizing: border-box;
+      position: relative;
+    }
 
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pdf-header {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .ausschuss-box {
-            background-color: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
+    .pdf-header h2 { font-size: 15pt; font-weight: bold; }
+    .pdf-header .badge { background: #3b82f6; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 10pt; font-weight: bold; }
 
-        .ausschuss-item {
-            background-color: rgba(0, 0, 0, 0.2);
-            padding: 8px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            border-left: 3px solid var(--danger-color);
-        }
+    .pdf-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
 
-        .rate-badge {
-            background-color: var(--danger-color);
-            color: #fff;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 5px;
-            font-size: 12px;
-        }
+    .pdf-meta-item label { font-size: 7pt; text-transform: uppercase; color: #64748b; font-weight: bold; display: block; }
+    .pdf-meta-item div { font-size: 9.5pt; font-weight: 600; color: #0f172a; }
 
-        .btn-main {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--success-color);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        .btn-reset {
-            width: 100%;
-            padding: 10px;
-            background-color: transparent;
-            color: var(--danger-color);
-            border: 1px solid var(--danger-color);
-            border-radius: 8px;
-            font-size: 13px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
+    .pdf-anlagen-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
 
-        /* PDF VORLAGE: Wie in der ursprünglichen Version außerhalb des Sichtbereichs */
-        #pdf-template {
-            position: absolute;
-            left: -9999px;
-            top: -9999px;
-            width: 1100px;
-            background-color: #ffffff;
-            color: #000000;
-            padding: 15px;
-            font-family: Arial, sans-serif;
-            box-sizing: border-box;
-        }
-        .pdf-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #1e40af;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-        .pdf-header h2 { font-size: 20px; color: #1e40af; margin: 0; text-transform: uppercase; }
-        .pdf-info { font-size: 12px; color: #334155; font-weight: bold; }
+    .pdf-anlage-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      font-size: 8pt;
+    }
 
-        .pdf-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-        .pdf-col {
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 8px;
-            background-color: #f8fafc;
-            font-size: 10px;
-        }
-        .pdf-col-title {
-            background-color: #1e40af;
-            color: #ffffff;
-            padding: 6px;
-            font-weight: bold;
-            text-align: center;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-        .pdf-section { margin-bottom: 8px; }
-        .pdf-label { font-weight: bold; color: #475569; font-size: 9px; text-transform: uppercase; }
-        .pdf-val { font-size: 10px; color: #0f172a; margin-top: 2px; word-break: break-word; }
-        
-        .pdf-loss-box {
-            background-color: #fef2f2;
-            border: 1px solid #fca5a5;
-            padding: 6px;
-            border-radius: 4px;
-            margin: 6px 0;
-        }
-        .pdf-badge-red { color: #dc2626; font-weight: bold; }
-        .pdf-rate-highlight {
-            background-color: #dc2626;
-            color: #ffffff;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 10px;
-            display: inline-block;
-            margin-top: 4px;
-        }
-    </style>
+    .pdf-anlage-title {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: bold;
+      text-align: center;
+      padding: 5px;
+      font-size: 9.5pt;
+    }
+
+    .pdf-card-body { padding: 6px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+    .pdf-block {
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    .pdf-block-title {
+      font-size: 7pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 2px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 2px;
+    }
+
+    .pdf-block-title.red { color: #dc2626; border-bottom-color: #fca5a5; }
+    .pdf-block-title.green { color: #059669; border-bottom-color: #6ee7b7; }
+
+    .pdf-val { font-size: 8pt; color: #1e293b; white-space: pre-wrap; word-break: break-word; }
+
+    .pdf-footer {
+      position: absolute;
+      bottom: 12px;
+      left: 25px;
+      right: 25px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 5px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: #94a3b8;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Schichtbuch Protokoll</h1>
+<div class="container" id="main-form">
+  <h1>Schichtbuch Bandgalvanik</h1>
+
+  <div class="card">
+    <div class="card-title">Schichtdaten</div>
+    <div class="grid-2">
+      <div>
+        <label for="datum">Datum</label>
+        <input type="date" id="datum">
+      </div>
+      <div>
+        <label for="schicht">Schicht</label>
+        <select id="schicht">
+          <option value="Frühschicht">Frühschicht</option>
+          <option value="Spätschicht">Spätschicht</option>
+          <option value="Nachtschicht">Nachtschicht</option>
+        </select>
+      </div>
     </div>
+    <label for="bediener">Schichtführer / Bediener</label>
+    <input type="text" id="bediener" placeholder="Name(n) eintragen">
+  </div>
 
-    <div id="historyBanner" class="history-banner">
-        ⚠️ Du bearbeitest eine geladene Schicht aus der Historie!
-    </div>
+  <div class="tab-container">
+    <button class="tab-btn active" onclick="showAnlage('801', event)">A 801</button>
+    <button class="tab-btn" onclick="showAnlage('802', event)">A 802</button>
+    <button class="tab-btn" onclick="showAnlage('803', event)">A 803</button>
+    <button class="tab-btn" onclick="showAnlage('804', event)">A 804</button>
+  </div>
 
-    <div class="history-controls">
-        <button class="btn-history" onclick="loadHistoryShift(1)">⏮️ Vorherige Schicht (-1)</button>
-        <button class="btn-history" onclick="loadHistoryShift(2)">⏮️ Vorvorherige Schicht (-2)</button>
-    </div>
-
-    <div class="global-card">
-        <div class="grid-2">
-            <div class="form-group">
-                <label for="datum">Datum</label>
-                <input type="date" id="datum">
-            </div>
-            <div class="form-group">
-                <label for="schicht">Schicht</label>
-                <select id="schicht">
-                    <option value="Frühschicht">Frühschicht</option>
-                    <option value="Spätschicht">Spätschicht</option>
-                    <option value="Nachtschicht">Nachtschicht</option>
-                </select>
-            </div>
-        </div>
-        <div class="form-group" style="margin-top: 8px;">
-            <label for="schichtfuehrer">Schichtführer / Bediener</label>
-            <input type="text" id="schichtfuehrer" placeholder="Name eintragen">
-        </div>
-    </div>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('801')">Anlage 801</button>
-        <button class="tab-btn" onclick="switchTab('802')">Anlage 802</button>
-        <button class="tab-btn" onclick="switchTab('803')">Anlage 803</button>
-        <button class="tab-btn" onclick="switchTab('804')">Anlage 804</button>
-    </div>
-
-    <div id="anlagenContainer"></div>
-
-    <button class="btn-main" onclick="generatePDFAndOpen()">📄 Protokoll als PDF erstellen & ansehen</button>
-    <button class="btn-reset" onclick="resetFormular(true)">🔄 Neues Protokoll starten (Felder leeren)</button>
-
-    <div id="pdf-template">
-        <div class="pdf-header">
-            <div>
-                <h2>SCHICHTBUCH PROTOKOLL</h2>
-                <div class="pdf-info" id="pdf-meta-info">Datum: - | Schicht: - | Bediener: -</div>
-            </div>
-            <div style="text-align: right; font-size: 10px; color: #64748b;">
-                Erstellt am: <span id="pdf-created-time"></span>
-            </div>
-        </div>
-        <div class="pdf-grid" id="pdf-grid-content"></div>
-    </div>
-
+  <form id="schichtForm">
     <script>
-        const anlagen = ['801', '802', '803', '804'];
-        const ursachenOptionen = [
-            "Kein Fehler",
-            "Bandriss",
-            "Beschichtungsfehler",
-            "Mechanischer Defekt",
-            "Verbogenes Werkzeug",
-            "Einstellteile Stanzerei",
-            "Flecken / Reinigungsproblem",
-            "Sonstiges"
-        ];
+      const anlagen = ['801', '802', '803', '804'];
+      const ursachenOptions = `
+        <option value="Kein Ausschuss">Kein Ausschuss</option>
+        <option value="Bandriss">Bandriss</option>
+        <option value="Beschichtungsfehler">Beschichtungsfehler</option>
+        <option value="Mechanischer Defekt">Mechanischer Defekt</option>
+        <option value="Verbogenes Werkzeug">Verbogenes Werkzeug</option>
+        <option value="Einstellteile Stanzerei">Einstellteile Stanzerei</option>
+        <option value="Reinigungsfehler / Flecken">Reinigungsfehler / Flecken</option>
+        <option value="Sonstiges">Sonstiges</option>
+      `;
 
-        function buildForm() {
-            const container = document.getElementById('anlagenContainer');
-            container.innerHTML = '';
-
-            anlagen.forEach((a, index) => {
-                const activeClass = index === 0 ? 'active' : '';
-                let ursachenHTML = ursachenOptionen.map(o => `<option value="${o}">${o}</option>`).join('');
-
-                container.innerHTML += `
-                    <div id="tab-${a}" class="tab-content ${activeClass}">
-                        <div class="global-card">
-                            <div class="section-title">Auftragsdaten (Anlage ${a})</div>
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label>Aktuelle Artikel-Nr.</label>
-                                    <input type="text" id="art_akt_${a}" placeholder="z. B. 464848-E">
-                                </div>
-                                <div class="form-group">
-                                    <label>Folge-Artikel-Nr.</label>
-                                    <input type="text" id="art_folge_${a}" placeholder="z. B. 515200-E">
-                                </div>
-                            </div>
-
-                            <div class="section-title">Mengen & Ausschuss (Schlechte Teile)</div>
-                            <div class="ausschuss-box">
-                                <div class="form-group">
-                                    <label>Gut-Menge (m / Stk)</label>
-                                    <input type="number" id="gut_menge_${a}" placeholder="0" oninput="calcLoss('${a}')">
-                                </div>
-                                
-                                <div style="margin-top: 10px; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: #fca5a5;">Ausschuss & Ursachen (bis zu 3 Angaben)</div>
-                                
-                                <div class="ausschuss-item">
-                                    <div class="grid-2">
-                                        <div>
-                                            <label>Hauptursache 1</label>
-                                            <select id="ausschuss_u1_${a}">${ursachenHTML}</select>
-                                        </div>
-                                        <div>
-                                            <label>Ausschuss-Menge 1</label>
-                                            <input type="number" id="ausschuss_m1_${a}" placeholder="0" oninput="calcLoss('${a}')">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 4px;">
-                                        <label>Bemerkung / Detail zu Ursache 1</label>
-                                        <input type="text" id="ausschuss_b1_${a}" placeholder="z. B. Stanzwerkzeug beschädigt">
-                                    </div>
-                                </div>
-
-                                <div class="ausschuss-item">
-                                    <div class="grid-2">
-                                        <div>
-                                            <label>Hauptursache 2</label>
-                                            <select id="ausschuss_u2_${a}">${ursachenHTML}</select>
-                                        </div>
-                                        <div>
-                                            <label>Ausschuss-Menge 2</label>
-                                            <input type="number" id="ausschuss_m2_${a}" placeholder="0" oninput="calcLoss('${a}')">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 4px;">
-                                        <label>Bemerkung / Detail zu Ursache 2</label>
-                                        <input type="text" id="ausschuss_b2_${a}" placeholder="z. B. Flecken nach E-Clean">
-                                    </div>
-                                </div>
-
-                                <div class="ausschuss-item">
-                                    <div class="grid-2">
-                                        <div>
-                                            <label>Hauptursache 3</label>
-                                            <select id="ausschuss_u3_${a}">${ursachenHTML}</select>
-                                        </div>
-                                        <div>
-                                            <label>Ausschuss-Menge 3</label>
-                                            <input type="number" id="ausschuss_m3_${a}" placeholder="0" oninput="calcLoss('${a}')">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 4px;">
-                                        <label>Bemerkung / Detail zu Ursache 3</label>
-                                        <input type="text" id="ausschuss_b3_${a}" placeholder="z. B. Bandriss bei Speicher">
-                                    </div>
-                                </div>
-
-                                <div id="rate_badge_${a}" class="rate-badge">Ausschussquote: 0.0% (Ausschuss: 0)</div>
-                            </div>
-
-                            <div class="section-title">To-Do für Folgeschicht</div>
-                            <div class="form-group">
-                                <textarea id="todo_${a}" rows="2" placeholder="Offene Aufgaben..."></textarea>
-                            </div>
-
-                            <div class="section-title">Besonderheiten / Defekte / KVP</div>
-                            <div class="form-group">
-                                <textarea id="defekte_${a}" rows="2" placeholder="Bestellungen, fehlende Teile, Störungen..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function switchTab(anlage) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            event.target.classList.add('active');
-            document.getElementById(`tab-${anlage}`).classList.add('active');
-        }
-
-        function calcLoss(a) {
-            const gut = parseFloat(document.getElementById(`gut_menge_${a}`).value) || 0;
-            const m1 = parseFloat(document.getElementById(`ausschuss_m1_${a}`).value) || 0;
-            const m2 = parseFloat(document.getElementById(`ausschuss_m2_${a}`).value) || 0;
-            const m3 = parseFloat(document.getElementById(`ausschuss_m3_${a}`).value) || 0;
-
-            const gesamtAusschuss = m1 + m2 + m3;
-            const gesamt = gut + gesamtAusschuss;
-
-            let quote = 0;
-            if (gesamt > 0) {
-                quote = ((gesamtAusschuss / gesamt) * 100).toFixed(1);
-            }
-
-            const badge = document.getElementById(`rate_badge_${a}`);
-            badge.innerText = `Ausschussquote: ${quote}% (Ausschuss: ${gesamtAusschuss})`;
+      anlagen.forEach((a, index) => {
+        document.write(`
+          <div id="anlage-${a}" class="anlage-content ${index === 0 ? 'active' : ''}">
             
-            saveCurrentState();
-        }
+            <div class="card">
+              <div class="card-title green">Produktion & Artikel</div>
+              <label>Gut-Menge (m / Stk)</label>
+              <input type="text" id="gut_menge_${a}" placeholder="z. B. 5000">
+              
+              <div class="grid-2" style="margin-top:4px;">
+                <div>
+                  <label>Aktuelle Artikelnummer</label>
+                  <input type="text" id="art_akt_${a}" placeholder="Artikel-Nr.">
+                </div>
+                <div>
+                  <label>Folge-Artikelnummer</label>
+                  <input type="text" id="art_folge_${a}" placeholder="Nächste Artikel-Nr.">
+                </div>
+              </div>
+            </div>
 
-        function saveCurrentState() {
-            const data = collectFormData();
-            localStorage.setItem('schichtbuch_current', JSON.stringify(data));
-        }
+            <div class="card">
+              <div class="card-title red">Ausschuss & Fehler - Anlage ${a}</div>
+              
+              <div class="grid-2">
+                <div>
+                  <label>Ausschuss (m / Stk)</label>
+                  <input type="text" id="ausschuss_menge_${a}_1" placeholder="0">
+                </div>
+                <div>
+                  <label>Hauptursache 1</label>
+                  <select id="ausschuss_grund_${a}_1">${ursachenOptions}</select>
+                </div>
+              </div>
+              <label>Details zu Fehler 1</label>
+              <textarea id="ausschuss_details_${a}_1" placeholder="Beschreibung Fehler 1"></textarea>
 
-        function collectFormData() {
-            let data = {
-                datum: document.getElementById('datum').value,
-                schicht: document.getElementById('schicht').value,
-                schichtfuehrer: document.getElementById('schichtfuehrer').value,
-                anlagenData: {}
-            };
+              <div class="sub-error">
+                <div class="sub-error-title">+ Option: Fehler 2</div>
+                <div class="grid-2">
+                  <div>
+                    <label>Ausschuss 2 (m / Stk)</label>
+                    <input type="text" id="ausschuss_menge_${a}_2" placeholder="0">
+                  </div>
+                  <div>
+                    <label>Hauptursache 2</label>
+                    <select id="ausschuss_grund_${a}_2">${ursachenOptions}</select>
+                  </div>
+                </div>
+                <label>Details zu Fehler 2</label>
+                <textarea id="ausschuss_details_${a}_2" placeholder="Beschreibung Fehler 2"></textarea>
+              </div>
 
-            anlagen.forEach(a => {
-                data.anlagenData[a] = {
-                    art_akt: document.getElementById(`art_akt_${a}`).value,
-                    art_folge: document.getElementById(`art_folge_${a}`).value,
-                    gut_menge: document.getElementById(`gut_menge_${a}`).value,
-                    u1: document.getElementById(`ausschuss_u1_${a}`).value,
-                    m1: document.getElementById(`ausschuss_m1_${a}`).value,
-                    b1: document.getElementById(`ausschuss_b1_${a}`).value,
-                    u2: document.getElementById(`ausschuss_u2_${a}`).value,
-                    m2: document.getElementById(`ausschuss_m2_${a}`).value,
-                    b2: document.getElementById(`ausschuss_b2_${a}`).value,
-                    u3: document.getElementById(`ausschuss_u3_${a}`).value,
-                    m3: document.getElementById(`ausschuss_m3_${a}`).value,
-                    b3: document.getElementById(`ausschuss_b3_${a}`).value,
-                    todo: document.getElementById(`todo_${a}`).value,
-                    defekte: document.getElementById(`defekte_${a}`).value
-                };
-            });
-            return data;
-        }
+              <div class="sub-error">
+                <div class="sub-error-title">+ Option: Fehler 3</div>
+                <div class="grid-2">
+                  <div>
+                    <label>Ausschuss 3 (m / Stk)</label>
+                    <input type="text" id="ausschuss_menge_${a}_3" placeholder="0">
+                  </div>
+                  <div>
+                    <label>Hauptursache 3</label>
+                    <select id="ausschuss_grund_${a}_3">${ursachenOptions}</select>
+                  </div>
+                </div>
+                <label>Details zu Fehler 3</label>
+                <textarea id="ausschuss_details_${a}_3" placeholder="Beschreibung Fehler 3"></textarea>
+              </div>
 
-        function populateForm(data) {
-            if (!data) return;
+            </div>
 
-            if (data.datum) document.getElementById('datum').value = data.datum;
-            if (data.schicht) document.getElementById('schicht').value = data.schicht;
-            if (data.schichtfuehrer) document.getElementById('schichtfuehrer').value = data.schichtfuehrer;
+            <div class="card">
+              <div class="card-title green">To-Do für Folgeschicht</div>
+              <textarea id="todo_${a}" placeholder="Was muss die nächste Schicht erledigen?"></textarea>
+            </div>
 
-            if (data.anlagenData) {
-                anlagen.forEach(a => {
-                    const ad = data.anlagenData[a];
-                    if (ad) {
-                        document.getElementById(`art_akt_${a}`).value = ad.art_akt || '';
-                        document.getElementById(`art_folge_${a}`).value = ad.art_folge || '';
-                        document.getElementById(`gut_menge_${a}`).value = ad.gut_menge || '';
-                        
-                        document.getElementById(`ausschuss_u1_${a}`).value = ad.u1 || 'Kein Fehler';
-                        document.getElementById(`ausschuss_m1_${a}`).value = ad.m1 || '';
-                        document.getElementById(`ausschuss_b1_${a}`).value = ad.b1 || '';
+            <div class="card">
+              <div class="card-title">Stationen & Besonderheiten</div>
+              <label>Auffälligkeiten an den Stationen</label>
+              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean..."></textarea>
+              <label>Defekte & technische Störungen</label>
+              <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
+              <label>Fehlendes Werkzeug / Materialien / KVP</label>
+              <textarea id="material_${a}" placeholder="Bestellungen, fehlende Teile, Verbesserungen"></textarea>
+            </div>
 
-                        document.getElementById(`ausschuss_u2_${a}`).value = ad.u2 || 'Kein Fehler';
-                        document.getElementById(`ausschuss_m2_${a}`).value = ad.m2 || '';
-                        document.getElementById(`ausschuss_b2_${a}`).value = ad.b2 || '';
-
-                        document.getElementById(`ausschuss_u3_${a}`).value = ad.u3 || 'Kein Fehler';
-                        document.getElementById(`ausschuss_m3_${a}`).value = ad.m3 || '';
-                        document.getElementById(`ausschuss_b3_${a}`).value = ad.b3 || '';
-
-                        document.getElementById(`todo_${a}`).value = ad.todo || '';
-                        document.getElementById(`defekte_${a}`).value = ad.defekte || '';
-                        calcLoss(a);
-                    }
-                });
-            }
-        }
-
-        function loadHistoryShift(offset) {
-            let history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
-            if (history.length < offset) {
-                alert(`Keine Daten für Schicht -${offset} in der Historie gefunden.`);
-                return;
-            }
-
-            saveCurrentState();
-
-            const targetData = history[history.length - offset];
-            populateForm(targetData);
-            
-            const banner = document.getElementById('historyBanner');
-            banner.style.display = 'block';
-            banner.innerText = `⚠️ GELADEN: Historie (-${offset}) vom ${targetData.datum} (${targetData.schicht}). Du kannst die Daten anpassen & als PDF erstellen!`;
-        }
-
-        function pushToHistory(data) {
-            let history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
-            history.push(data);
-            if (history.length > 5) history.shift();
-            localStorage.setItem('schichtbuch_history', JSON.stringify(history));
-        }
-
-        function resetFormular(manualClick = false) {
-            const currentData = collectFormData();
-            if (manualClick) {
-                pushToHistory(currentData);
-            }
-
-            const lastBediener = document.getElementById('schichtfuehrer').value;
-            let lastArticles = {};
-            anlagen.forEach(a => {
-                lastArticles[a] = document.getElementById(`art_akt_${a}`).value;
-            });
-
-            document.querySelectorAll('input[type="number"], input[type="text"], textarea').forEach(i => {
-                if (i.id !== 'schichtfuehrer' && !i.id.startsWith('art_akt_')) {
-                    i.value = '';
-                }
-            });
-            document.querySelectorAll('select[id^="ausschuss_u"]').forEach(s => s.value = 'Kein Fehler');
-
-            document.getElementById('schichtfuehrer').value = lastBediener;
-            document.getElementById('datum').valueAsDate = new Date();
-            
-            anlagen.forEach(a => {
-                if (lastArticles[a]) document.getElementById(`art_akt_${a}`).value = lastArticles[a];
-                calcLoss(a);
-            });
-
-            document.getElementById('historyBanner').style.display = 'none';
-            saveCurrentState();
-        }
-
-        // URSPRÜNGLICHE DRUCK-/SPEICHER-FUNKTION
-        function generatePDFAndOpen() {
-            const formData = collectFormData();
-            pushToHistory(formData);
-
-            document.getElementById('pdf-meta-info').innerText = `Datum: ${formData.datum || '-'} | Schicht: ${formData.schicht || '-'} | Bediener: ${formData.schichtfuehrer || '-'}`;
-            document.getElementById('pdf-created-time').innerText = new Date().toLocaleString('de-DE');
-
-            const grid = document.getElementById('pdf-grid-content');
-            grid.innerHTML = '';
-
-            anlagen.forEach(a => {
-                const ad = formData.anlagenData[a];
-                const m1 = parseFloat(ad.m1) || 0;
-                const m2 = parseFloat(ad.m2) || 0;
-                const m3 = parseFloat(ad.m3) || 0;
-                const totalAusschuss = m1 + m2 + m3;
-                const gut = parseFloat(ad.gut_menge) || 0;
-                const gesamt = gut + totalAusschuss;
-                const quote = gesamt > 0 ? ((totalAusschuss / gesamt) * 100).toFixed(1) : '0.0';
-
-                let errorsHTML = '';
-                if (m1 > 0) errorsHTML += `<div>• <b>${ad.u1}</b>: ${m1} Stk ${ad.b1 ? '(' + ad.b1 + ')' : ''}</div>`;
-                if (m2 > 0) errorsHTML += `<div>• <b>${ad.u2}</b>: ${m2} Stk ${ad.b2 ? '(' + ad.b2 + ')' : ''}</div>`;
-                if (m3 > 0) errorsHTML += `<div>• <b>${ad.u3}</b>: ${m3} Stk ${ad.b3 ? '(' + ad.b3 + ')' : ''}</div>`;
-                if (!errorsHTML) errorsHTML = '<div>Kein Ausschuss gemeldet</div>';
-
-                grid.innerHTML += `
-                    <div class="pdf-col">
-                        <div>
-                            <div class="pdf-col-title">ANLAGE ${a}</div>
-                            
-                            <div class="pdf-section">
-                                <div class="pdf-label">Artikel-Nr. (Aktual / Folge):</div>
-                                <div class="pdf-val"><b>${ad.art_akt || '-'}</b> / ${ad.art_folge || '-'}</div>
-                            </div>
-
-                            <div class="pdf-section">
-                                <div class="pdf-label">Mengenübersicht:</div>
-                                <div class="pdf-val">Gut-Menge: <b>${ad.gut_menge || '0'}</b></div>
-                                <div class="pdf-val">Gesamtausschuss: <span class="pdf-badge-red">${totalAusschuss}</span></div>
-                            </div>
-
-                            <div class="pdf-loss-box">
-                                <div class="pdf-label" style="color: #991b1b;">Ausschuss & Ursachen:</div>
-                                <div class="pdf-val">${errorsHTML}</div>
-                                <div class="pdf-rate-highlight">Ausschussquote: ${quote}%</div>
-                            </div>
-
-                            <div class="pdf-section">
-                                <div class="pdf-label">To-Do Folgeschicht:</div>
-                                <div class="pdf-val">${ad.todo || 'Keine'}</div>
-                            </div>
-                        </div>
-
-                        <div class="pdf-section" style="margin-top: 6px;">
-                            <div class="pdf-label">Besonderheiten / Defekte / KVP:</div>
-                            <div class="pdf-val">${ad.defekte || 'Keine'}</div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            const element = document.getElementById('pdf-template');
-
-            const opt = {
-                margin:       [5, 5, 5, 5],
-                filename:     `Schichtprotokoll_${formData.datum}_${formData.schicht}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
-
-            html2pdf().set(opt).from(element).save();
-        }
-
-        document.addEventListener('input', function(e) {
-            saveCurrentState();
-        });
-
-        window.onload = function() {
-            buildForm();
-            document.getElementById('datum').valueAsDate = new Date();
-
-            const saved = localStorage.getItem('schichtbuch_current');
-            if (saved) {
-                populateForm(JSON.parse(saved));
-            }
-        };
+          </div>
+        `);
+      });
     </script>
+
+    <button type="button" id="submitBtn" class="btn-submit" onclick="generateShiftPDF()">
+      PDF Erstellen & Öffnen
+    </button>
+    <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
+      Neues Protokoll starten (Artikel-Nr. behalten)
+    </button>
+  </form>
+</div>
+
+<div id="pdf-container"></div>
+
+<script>
+  // Initiales Datum
+  document.getElementById('datum').valueAsDate = new Date();
+
+  function showAnlage(anl, event) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.anlage-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(`anlage-${anl}`).classList.add('active');
+  }
+
+  // Auto-Save in LocalStorage bei jeder Eingabe
+  const formElement = id => document.getElementById(id);
+
+  function saveToLocalStorage() {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      if (el.id) {
+        localStorage.setItem('schichtbuch_' + el.id, el.value);
+      }
+    });
+  }
+
+  function loadFromLocalStorage() {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      if (el.id) {
+        const val = localStorage.getItem('schichtbuch_' + el.id);
+        if (val !== null) el.value = val;
+      }
+    });
+    if (!localStorage.getItem('schichtbuch_datum')) {
+      document.getElementById('datum').valueAsDate = new Date();
+    }
+  }
+
+  // Event Listener für Auto-Save anhängen
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFromLocalStorage();
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', saveToLocalStorage);
+      el.addEventListener('change', saveToLocalStorage);
+    });
+  });
+
+  // Neues Protokoll starten: Datum auf heute, Felder leeren, aber Artikelnummern behalten
+  function resetFormKeepArtikel() {
+    if (confirm("Möchtest du ein neues Protokoll starten? Alle Felder werden geleert, aber die Artikelnummern bleiben erhalten.")) {
+      const savedArtAkt = {};
+      const savedArtFolge = {};
+
+      ['801', '802', '803', '804'].forEach(a => {
+        savedArtAkt[a] = formElement(`art_akt_${a}`).value;
+        savedArtFolge[a] = formElement(`art_folge_${a}`).value;
+      });
+
+      // LocalStorage löschen
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('schichtbuch_')) localStorage.removeItem(key);
+      });
+
+      // Formular zurücksetzen
+      document.getElementById('schichtForm').reset();
+      document.getElementById('datum').valueAsDate = new Date();
+
+      // Artikelnummern wieder einfügen
+      ['801', '802', '803', '804'].forEach(a => {
+        formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
+        formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
+      });
+
+      saveToLocalStorage();
+      alert("Neues Formular bereit. Datum wurde aktualisiert!");
+    }
+  }
+
+  async function generateShiftPDF() {
+    const btn = document.getElementById('submitBtn');
+    btn.innerText = "Erstelle Schichtblatt...";
+    btn.style.opacity = "0.5";
+
+    const datumVal = formElement('datum').value || '-';
+    const schichtVal = formElement('schicht').value;
+    const bedienerVal = formElement('bediener').value || '-';
+
+    const pdfContainer = document.getElementById('pdf-container');
+    pdfContainer.innerHTML = '';
+
+    let anlagenHTML = '';
+    ['801', '802', '803', '804'].forEach(a => {
+      const gutMenge = formElement(`gut_menge_${a}`).value || '0';
+      const artAkt = formElement(`art_akt_${a}`).value || '-';
+      const artFolge = formElement(`art_folge_${a}`).value || '-';
+      const todo = formElement(`todo_${a}`).value || '-';
+      const stat = formElement(`stationen_${a}`).value || '-';
+      const def = formElement(`defekte_${a}`).value || '-';
+      const mat = formElement(`material_${a}`).value || '-';
+
+      // Fehler 1 - 3 zusammenbauen
+      let ausschussBlockHTML = '';
+      for (let i = 1; i <= 3; i++) {
+        const menge = formElement(`ausschuss_menge_${a}_${i}`).value || '0';
+        const grund = formElement(`ausschuss_grund_${a}_${i}`).value;
+        const det = formElement(`ausschuss_details_${a}_${i}`).value;
+
+        if ((menge !== '0' && menge !== '') || grund !== 'Kein Ausschuss' || det !== '') {
+          ausschussBlockHTML += `
+            <div style="margin-bottom: 3px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px;">
+              <b>Menge:</b> <span style="color:#dc2626; font-weight:bold;">${menge}</span> | <b>Ursache:</b> ${grund}
+              ${det ? `<br><i>${det}</i>` : ''}
+            </div>
+          `;
+        }
+      }
+
+      if (!ausschussBlockHTML) {
+        ausschussBlockHTML = '<div class="pdf-val">Kein Ausschuss</div>';
+      }
+
+      anlagenHTML += `
+        <div class="pdf-anlage-card">
+          <div class="pdf-anlage-title">ANLAGE ${a}</div>
+          <div class="pdf-card-body">
+            
+            <div class="pdf-block">
+              <div class="pdf-block-title green">Produktion</div>
+              <div class="pdf-val"><b>Gut-Menge:</b> ${gutMenge}</div>
+              <div class="pdf-val"><b>Artikel-Nr:</b> ${artAkt}</div>
+              <div class="pdf-val"><b>Folge-Art.:</b> ${artFolge}</div>
+            </div>
+
+            <div class="pdf-block">
+              <div class="pdf-block-title red">Ausschuss & Ursachen</div>
+              ${ausschussBlockHTML}
+            </div>
+
+            <div class="pdf-block">
+              <div class="pdf-block-title green">To-Do Folgeschicht</div>
+              <div class="pdf-val">${todo}</div>
+            </div>
+
+            <div class="pdf-block" style="flex: 1;">
+              <div class="pdf-block-title">Stationen & Störungen</div>
+              <div class="pdf-val"><b>Stationen:</b> ${stat}</div>
+              <div class="pdf-val"><b>Defekte:</b> ${def}</div>
+              <div class="pdf-val"><b>Material/KVP:</b> ${mat}</div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    });
+
+    pdfContainer.innerHTML = `
+      <div class="pdf-page" id="pdf-shift-page">
+        <div class="pdf-header">
+          <div>
+            <h2>SCHICHTBUCH PROTOKOLL</h2>
+            <div style="font-size: 8.5pt; opacity: 0.8;">Bandgalvanik Gesamtbericht</div>
+          </div>
+          <div class="badge">${schichtVal.toUpperCase()}</div>
+        </div>
+
+        <div class="pdf-meta-grid">
+          <div class="pdf-meta-item">
+            <label>Datum</label>
+            <div>${datumVal}</div>
+          </div>
+          <div class="pdf-meta-item">
+            <label>Schicht</label>
+            <div>${schichtVal}</div>
+          </div>
+          <div class="pdf-meta-item">
+            <label>Schichtführer / Bediener</label>
+            <div>${bedienerVal}</div>
+          </div>
+        </div>
+
+        <div class="pdf-anlagen-grid">
+          ${anlagenHTML}
+        </div>
+
+        <div class="pdf-footer">
+          <span>Schichtbuch Protokoll - Bandgalvanik</span>
+          <span>1 Blatt pro Schicht</span>
+        </div>
+      </div>
+    `;
+
+    // Canvas & PDF Rendern (A4 Querformat)
+    const pageEl = document.getElementById('pdf-shift-page');
+    const canvas = await html2canvas(pageEl, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('landscape', 'pt', 'a4');
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+    const pdfBlob = pdf.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+    btn.innerText = "PDF Erstellen & Öffnen";
+    btn.style.opacity = "1";
+
+    window.location.href = pdfUrl;
+  }
+</script>
+
 </body>
 </html>
