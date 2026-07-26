@@ -155,27 +155,28 @@
             cursor: pointer;
         }
 
-        /* UNSIHTBARE PDF VORLAGE (A4 Querformat) */
+        /* FIX FÜR SAFARI / MOBILE: Vorlage ist fixed außerhalb des Screens, aber voll gerendert */
         #pdf-template {
-            position: absolute;
+            position: fixed;
             left: -9999px;
             top: 0;
-            width: 1050px;
-            background-color: #ffffff;
-            color: #000000;
-            padding: 20px;
+            width: 1020px;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            padding: 15px;
             font-family: Arial, sans-serif;
+            box-sizing: border-box;
         }
         .pdf-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid #1e40af;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
         }
-        .pdf-header h2 { font-size: 22px; color: #1e40af; margin: 0; }
-        .pdf-info { font-size: 12px; color: #4b5563; }
+        .pdf-header h2 { font-size: 20px; color: #1e40af; margin: 0; text-transform: uppercase; }
+        .pdf-info { font-size: 12px; color: #334155; font-weight: bold; }
 
         .pdf-grid {
             display: grid;
@@ -188,21 +189,45 @@
             padding: 8px;
             background-color: #f8fafc;
             font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .pdf-col-title {
             background-color: #1e40af;
             color: #ffffff;
-            padding: 5px;
+            padding: 6px;
             font-weight: bold;
             text-align: center;
             border-radius: 4px;
             margin-bottom: 8px;
-            font-size: 11px;
+            font-size: 12px;
         }
-        .pdf-section { margin-bottom: 6px; }
-        .pdf-label { font-weight: bold; color: #475569; font-size: 9px; }
-        .pdf-val { font-size: 10px; margin-bottom: 3px; word-break: break-word; }
-        .pdf-badge-red { color: #dc2626; font-weight: bold; }
+        .pdf-section { margin-bottom: 8px; }
+        .pdf-label { font-weight: bold; color: #475569; font-size: 9px; text-transform: uppercase; }
+        .pdf-val { font-size: 10px; color: #0f172a; margin-top: 2px; word-break: break-word; }
+        
+        .pdf-loss-box {
+            background-color: #fef2f2;
+            border: 1px solid #fca5a5;
+            padding: 6px;
+            border-radius: 4px;
+            margin: 6px 0;
+        }
+        .pdf-badge-red {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .pdf-rate-highlight {
+            background-color: #dc2626;
+            color: #ffffff;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10px;
+            display: inline-block;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -485,7 +510,7 @@
             }
         }
 
-        // Vergangene Schicht aus der Historie laden (-1 oder -2)
+        // Vergangene Schicht aus der Historie laden
         function loadHistoryShift(offset) {
             let history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
             if (history.length < offset) {
@@ -545,13 +570,13 @@
             saveCurrentState();
         }
 
-        // PDF Generierung und Öffnen im Viewer
+        // PDF Generierung & Vorschau öffnen
         function generatePDFAndOpen() {
             const formData = collectFormData();
             
             pushToHistory(formData);
 
-            document.getElementById('pdf-meta-info').innerText = `Datum: ${formData.datum} | Schicht: ${formData.schicht} | Bediener: ${formData.schichtfuehrer || '-'}`;
+            document.getElementById('pdf-meta-info').innerText = `Datum: ${formData.datum || '-'} | Schicht: ${formData.schicht || '-'} | Bediener: ${formData.schichtfuehrer || '-'}`;
             document.getElementById('pdf-created-time').innerText = new Date().toLocaleString('de-DE');
 
             const grid = document.getElementById('pdf-grid-content');
@@ -571,35 +596,38 @@
                 if (m1 > 0) errorsHTML += `<div>• <b>${ad.u1}</b>: ${m1} Stk ${ad.b1 ? '(' + ad.b1 + ')' : ''}</div>`;
                 if (m2 > 0) errorsHTML += `<div>• <b>${ad.u2}</b>: ${m2} Stk ${ad.b2 ? '(' + ad.b2 + ')' : ''}</div>`;
                 if (m3 > 0) errorsHTML += `<div>• <b>${ad.u3}</b>: ${m3} Stk ${ad.b3 ? '(' + ad.b3 + ')' : ''}</div>`;
-                if (!errorsHTML) errorsHTML = '<div>Kein Ausschuss</div>';
+                if (!errorsHTML) errorsHTML = '<div>Kein Ausschuss gemeldet</div>';
 
                 grid.innerHTML += `
                     <div class="pdf-col">
-                        <div class="pdf-col-title">ANLAGE ${a}</div>
-                        
-                        <div class="pdf-section">
-                            <div class="pdf-label">Artikel-Nr. (Akt/Folge):</div>
-                            <div class="pdf-val"><b>${ad.art_akt || '-'}</b> / ${ad.art_folge || '-'}</div>
+                        <div>
+                            <div class="pdf-col-title">ANLAGE ${a}</div>
+                            
+                            <div class="pdf-section">
+                                <div class="pdf-label">Artikel-Nr. (Aktual / Folge):</div>
+                                <div class="pdf-val"><b>${ad.art_akt || '-'}</b> / ${ad.art_folge || '-'}</div>
+                            </div>
+
+                            <div class="pdf-section">
+                                <div class="pdf-label">Mengenübersicht:</div>
+                                <div class="pdf-val">Gut-Menge: <b>${ad.gut_menge || '0'}</b></div>
+                                <div class="pdf-val">Gesamtausschuss: <span class="pdf-badge-red">${totalAusschuss}</span></div>
+                            </div>
+
+                            <div class="pdf-loss-box">
+                                <div class="pdf-label" style="color: #991b1b;">Ausschuss & Ursachen:</div>
+                                <div class="pdf-val">${errorsHTML}</div>
+                                <div class="pdf-rate-highlight">Ausschussquote: ${quote}%</div>
+                            </div>
+
+                            <div class="pdf-section">
+                                <div class="pdf-label">To-Do Folgeschicht:</div>
+                                <div class="pdf-val">${ad.todo || 'Keine'}</div>
+                            </div>
                         </div>
 
-                        <div class="pdf-section">
-                            <div class="pdf-label">Mengen & Quote:</div>
-                            <div class="pdf-val">Gut: <b>${ad.gut_menge || '0'}</b> | Auss.: <span class="pdf-badge-red">${totalAusschuss}</span></div>
-                            <div class="pdf-val">Quote: <b class="pdf-badge-red">${quote}%</b></div>
-                        </div>
-
-                        <div class="pdf-section">
-                            <div class="pdf-label">Ausschuss & Ursachen:</div>
-                            <div class="pdf-val">${errorsHTML}</div>
-                        </div>
-
-                        <div class="pdf-section">
-                            <div class="pdf-label">To-Do Folgeschicht:</div>
-                            <div class="pdf-val">${ad.todo || 'Keine'}</div>
-                        </div>
-
-                        <div class="pdf-section">
-                            <div class="pdf-label">Defekte / Material / KVP:</div>
+                        <div class="pdf-section" style="margin-top: 6px;">
+                            <div class="pdf-label">Besonderheiten / Defekte / KVP:</div>
                             <div class="pdf-val">${ad.defekte || 'Keine'}</div>
                         </div>
                     </div>
@@ -607,14 +635,17 @@
             });
 
             const element = document.getElementById('pdf-template');
+            
+            // Konfiguration für A4 Querformat auf 1 Seite
             const opt = {
-                margin:       [8, 8, 8, 8],
+                margin:       [6, 6, 6, 6],
                 filename:     `Schichtprotokoll_${formData.datum}_${formData.schicht}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, logging: false },
+                html2canvas:  { scale: 2, logging: false, useCORS: true, scrollX: 0, scrollY: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
+            // PDF erstellen und direkt als Vorschau im Browser öffnen
             html2pdf().set(opt).from(element).outputPdf('bloburl').then(function(pdfUrl) {
                 window.open(pdfUrl, '_blank');
             });
