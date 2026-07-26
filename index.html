@@ -14,6 +14,7 @@
       --accent-blue: #3b82f6;
       --accent-green: #10b981;
       --accent-orange: #f59e0b;
+      --accent-purple: #8b5cf6;
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --border-color: #374151;
@@ -25,9 +26,10 @@
     h1 { font-size: 1.3rem; text-align: center; margin-bottom: 12px; color: #ffffff; }
 
     .card { background: var(--card-bg); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
-    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid var(--accent-blue); display: flex; justify-content: space-between; }
+    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid var(--accent-blue); display: flex; justify-content: space-between; align-items: center; }
     .card-title.red { border-bottom-color: var(--accent-red); }
     .card-title.green { border-bottom-color: var(--accent-green); }
+    .card-title.purple { border-bottom-color: var(--accent-purple); }
 
     label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 3px; }
     input, select, textarea { width: 100%; padding: 10px; background: #111827; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
@@ -44,9 +46,13 @@
 
     .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
     .btn-reset { width: 100%; padding: 10px; background: #374151; color: var(--text-muted); border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .btn-hist { padding: 8px; background: #2d3748; color: #e2e8f0; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; flex: 1; }
 
     .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
     .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
+
+    .ausschuss-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: #374151; color: #fff; }
+    .ausschuss-badge.warn { background: #dc2626; color: #fff; }
 
     /* =========================================================
        PDF DESIGN (A4 Querformat: 1123px x 794px)
@@ -140,6 +146,8 @@
       margin-bottom: 2px;
       border-bottom: 1px solid #e2e8f0;
       padding-bottom: 2px;
+      display: flex;
+      justify-content: space-between;
     }
 
     .pdf-block-title.red { color: #dc2626; border-bottom-color: #fca5a5; }
@@ -165,6 +173,17 @@
 
 <div class="container" id="main-form">
   <h1>Schichtbuch Bandgalvanik</h1>
+
+  <div class="card">
+    <div class="card-title purple">
+      <span>Schicht-Historie</span>
+      <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Zurückblättern</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" class="btn-hist" onclick="loadHistory(1)" id="hist-btn-1">Letzte Schicht (-1)</button>
+      <button type="button" class="btn-hist" onclick="loadHistory(2)" id="hist-btn-2">Vorletzte Schicht (-2)</button>
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-title">Schichtdaten</div>
@@ -214,7 +233,7 @@
             <div class="card">
               <div class="card-title green">Produktion & Artikel</div>
               <label>Gut-Menge (m / Stk)</label>
-              <input type="text" id="gut_menge_${a}" placeholder="z. B. 5000">
+              <input type="number" id="gut_menge_${a}" placeholder="z. B. 5000" oninput="calcAusschussPercent('${a}')">
               
               <div class="grid-2" style="margin-top:4px;">
                 <div>
@@ -229,12 +248,15 @@
             </div>
 
             <div class="card">
-              <div class="card-title red">Ausschuss & Fehler - Anlage ${a}</div>
+              <div class="card-title red">
+                <span>Ausschuss & Fehler - A ${a}</span>
+                <span class="ausschuss-badge" id="badge_pct_${a}">0.0% Quote</span>
+              </div>
               
               <div class="grid-2">
                 <div>
                   <label>Ausschuss (m / Stk)</label>
-                  <input type="text" id="ausschuss_menge_${a}_1" placeholder="0">
+                  <input type="number" id="ausschuss_menge_${a}_1" placeholder="0" oninput="calcAusschussPercent('${a}')">
                 </div>
                 <div>
                   <label>Hauptursache 1</label>
@@ -249,7 +271,7 @@
                 <div class="grid-2">
                   <div>
                     <label>Ausschuss 2 (m / Stk)</label>
-                    <input type="text" id="ausschuss_menge_${a}_2" placeholder="0">
+                    <input type="number" id="ausschuss_menge_${a}_2" placeholder="0" oninput="calcAusschussPercent('${a}')">
                   </div>
                   <div>
                     <label>Hauptursache 2</label>
@@ -265,7 +287,7 @@
                 <div class="grid-2">
                   <div>
                     <label>Ausschuss 3 (m / Stk)</label>
-                    <input type="text" id="ausschuss_menge_${a}_3" placeholder="0">
+                    <input type="number" id="ausschuss_menge_${a}_3" placeholder="0" oninput="calcAusschussPercent('${a}')">
                   </div>
                   <div>
                     <label>Hauptursache 3</label>
@@ -302,7 +324,7 @@
       PDF Erstellen & Öffnen
     </button>
     <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
-      Neues Protokoll starten (Artikel-Nr. behalten)
+      Neues Protokoll starten (Bediener & Artikel behalten)
     </button>
   </form>
 </div>
@@ -310,6 +332,8 @@
 <div id="pdf-container"></div>
 
 <script>
+  const formElement = id => document.getElementById(id);
+
   // Initiales Datum
   document.getElementById('datum').valueAsDate = new Date();
 
@@ -320,9 +344,34 @@
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
-  // Auto-Save in LocalStorage bei jeder Eingabe
-  const formElement = id => document.getElementById(id);
+  // Berechnung Ausschuss-Prozentsatz
+  function calcAusschussPercent(a) {
+    const gut = parseFloat(formElement(`gut_menge_${a}`).value) || 0;
+    const a1 = parseFloat(formElement(`ausschuss_menge_${a}_1`).value) || 0;
+    const a2 = parseFloat(formElement(`ausschuss_menge_${a}_2`).value) || 0;
+    const a3 = parseFloat(formElement(`ausschuss_menge_${a}_3`).value) || 0;
 
+    const gesamtAusschuss = a1 + a2 + a3;
+    const gesamtProduktion = gut + gesamtAusschuss;
+
+    let pct = 0;
+    if (gesamtProduktion > 0) {
+      pct = (gesamtAusschuss / gesamtProduktion) * 100;
+    }
+
+    const badge = formElement(`badge_pct_${a}`);
+    if (badge) {
+      badge.innerText = `${pct.toFixed(1)}% Quote`;
+      if (pct > 0) {
+        badge.classList.add('warn');
+      } else {
+        badge.classList.remove('warn');
+      }
+    }
+    return pct.toFixed(1);
+  }
+
+  // LocalStorage Auto-Save
   function saveToLocalStorage() {
     const inputs = document.querySelectorAll('input, select, textarea');
     inputs.forEach(el => {
@@ -343,9 +392,65 @@
     if (!localStorage.getItem('schichtbuch_datum')) {
       document.getElementById('datum').valueAsDate = new Date();
     }
+    ['801', '802', '803', '804'].forEach(a => calcAusschussPercent(a));
+    updateHistoryButtons();
   }
 
-  // Event Listener für Auto-Save anhängen
+  // Historie-Logik (Speichern der letzten 2 Schichten)
+  function saveCurrentToHistory() {
+    const currentData = {};
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.id) currentData[el.id] = el.value;
+    });
+
+    let history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
+    // Nur speichern, wenn Schicht oder Bediener ausgefüllt sind
+    if (currentData['bediener'] || currentData['datum']) {
+      history.unshift(currentData); // Vorne anfügen
+      if (history.length > 5) history = history.slice(0, 5); // Max 5 speichern
+      localStorage.setItem('schichtbuch_history', JSON.stringify(history));
+    }
+  }
+
+  function updateHistoryButtons() {
+    const history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
+    const btn1 = formElement('hist-btn-1');
+    const btn2 = formElement('hist-btn-2');
+
+    if (history[0]) {
+      btn1.innerText = `Letchte (-1): ${history[0].schicht || ''} (${history[0].datum || ''})`;
+      btn1.disabled = false;
+    } else {
+      btn1.innerText = "Letzte Schicht (-1) [Leer]";
+      btn1.disabled = true;
+    }
+
+    if (history[1]) {
+      btn2.innerText = `Vorletzte (-2): ${history[1].schicht || ''} (${history[1].datum || ''})`;
+      btn2.disabled = false;
+    } else {
+      btn2.innerText = "Vorletzte Schicht (-2) [Leer]";
+      btn2.disabled = true;
+    }
+  }
+
+  function loadHistory(index) {
+    const history = JSON.parse(localStorage.getItem('schichtbuch_history') || '[]');
+    const item = history[index - 1];
+    if (!item) return;
+
+    if (confirm(`Möchtest du das Protokoll vom ${item.datum} (${item.schicht}) anzeigen/laden?`)) {
+      Object.keys(item).forEach(key => {
+        const field = formElement(key);
+        if (field) field.value = item[key];
+      });
+      saveToLocalStorage();
+      ['801', '802', '803', '804'].forEach(a => calcAusschussPercent(a));
+      alert("Historien-Daten geladen!");
+    }
+  }
+
+  // Event Listener anhängen
   document.addEventListener('DOMContentLoaded', () => {
     loadFromLocalStorage();
     document.querySelectorAll('input, select, textarea').forEach(el => {
@@ -354,9 +459,13 @@
     });
   });
 
-  // Neues Protokoll starten: Datum auf heute, Felder leeren, aber Artikelnummern behalten
+  // Neues Protokoll starten: Datum auf heute, Bediener und Artikel-Nr. BEHALTEN
   function resetFormKeepArtikel() {
-    if (confirm("Möchtest du ein neues Protokoll starten? Alle Felder werden geleert, aber die Artikelnummern bleiben erhalten.")) {
+    if (confirm("Neues Protokoll starten? Bediener & Artikelnummern bleiben erhalten, das alte Protokoll wandert in die Historie.")) {
+      // Vorherige Schicht in Historie sichern
+      saveCurrentToHistory();
+
+      const savedBediener = formElement('bediener').value;
       const savedArtAkt = {};
       const savedArtFolge = {};
 
@@ -367,21 +476,26 @@
 
       // LocalStorage löschen
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('schichtbuch_')) localStorage.removeItem(key);
+        if (key.startsWith('schichtbuch_') && key !== 'schichtbuch_history') {
+          localStorage.removeItem(key);
+        }
       });
 
       // Formular zurücksetzen
       document.getElementById('schichtForm').reset();
       document.getElementById('datum').valueAsDate = new Date();
 
-      // Artikelnummern wieder einfügen
+      // Bediener und Artikelnummern wieder einfügen
+      formElement('bediener').value = savedBediener || '';
       ['801', '802', '803', '804'].forEach(a => {
         formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
         formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
+        calcAusschussPercent(a);
       });
 
       saveToLocalStorage();
-      alert("Neues Formular bereit. Datum wurde aktualisiert!");
+      updateHistoryButtons();
+      alert("Sauberes Formular geladen! Bediener & Artikelnummern wurden übernommen.");
     }
   }
 
@@ -406,6 +520,7 @@
       const stat = formElement(`stationen_${a}`).value || '-';
       const def = formElement(`defekte_${a}`).value || '-';
       const mat = formElement(`material_${a}`).value || '-';
+      const pctVal = calcAusschussPercent(a);
 
       // Fehler 1 - 3 zusammenbauen
       let ausschussBlockHTML = '';
@@ -441,7 +556,10 @@
             </div>
 
             <div class="pdf-block">
-              <div class="pdf-block-title red">Ausschuss & Ursachen</div>
+              <div class="pdf-block-title red">
+                <span>Ausschuss & Ursachen</span>
+                <span><b>${pctVal}%</b></span>
+              </div>
               ${ausschussBlockHTML}
             </div>
 
