@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Schichtbuch Bandgalvanik</title>
-  <!-- Stabile Bibliotheken für PDF-Generierung -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -44,24 +43,93 @@
 
     .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-    /* PDF Druckvorlage - Sichtbar auf separater Render-Ebene */
-    #pdf-wrapper {
+    /* =========================================================
+       PROFI PDF DESIGN (Wird im Hintergrund für Rendering genutzt)
+       ========================================================= */
+    #pdf-container {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 1000px;
+      left: -9999px;
+      top: -9999px;
+      width: 794px; /* A4 Breite bei 96 DPI */
       background: #ffffff;
-      color: #000000;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      visibility: hidden;
+      color: #1f2937;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
     }
 
-    #pdf-wrapper h2 { text-align: center; font-size: 14pt; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 4px; }
-    #pdf-wrapper table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    #pdf-wrapper th, #pdf-wrapper td { border: 1px solid #333; padding: 6px; text-align: left; vertical-align: top; font-size: 8.5pt; word-wrap: break-word; }
-    #pdf-wrapper th { background-color: #e5e7eb; font-weight: bold; }
-    .pdf-red { color: #dc2626; font-weight: bold; }
+    .pdf-page {
+      width: 794px;
+      height: 1123px; /* Exact A4 Höhe */
+      padding: 40px;
+      background: #ffffff;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .pdf-header {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pdf-header h2 { font-size: 18pt; font-weight: bold; letter-spacing: 0.5px; }
+    .pdf-header .badge { background: #3b82f6; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12pt; font-weight: bold; }
+
+    .pdf-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .pdf-meta-item label { font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: bold; margin: 0; }
+    .pdf-meta-item div { font-size: 11pt; font-weight: 600; color: #0f172a; margin-top: 2px; }
+
+    .pdf-section {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 18px;
+      background: #ffffff;
+    }
+
+    .pdf-section-title {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #1e293b;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pdf-section-title.red { border-bottom-color: #ef4444; color: #dc2626; }
+    .pdf-section-title.green { border-bottom-color: #10b981; color: #059669; }
+
+    .pdf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .pdf-text-box { background: #f8fafc; border: 1px solid #f1f5f9; padding: 10px; border-radius: 6px; font-size: 10pt; color: #334155; min-height: 40px; white-space: pre-wrap; }
+    
+    .pdf-footer {
+      position: absolute;
+      bottom: 30px;
+      left: 40px;
+      right: 40px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
@@ -142,7 +210,7 @@
             <div class="card">
               <div class="card-title">Stationen & Besonderheiten</div>
               <label>Auffälligkeiten an den Stationen</label>
-              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean, E-Clean, Nickel, Palladium, U-Turm, Gold, Zinn, Befettung..."></textarea>
+              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean, E-Clean..."></textarea>
               <label>Defekte & technische Störungen</label>
               <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
               <label>Fehlendes Werkzeug / Materialien / KVP</label>
@@ -153,33 +221,14 @@
       });
     </script>
 
-    <button type="button" id="submitBtn" class="btn-submit" onclick="openPDF()">
-      PDF Erstellen & Ansehen
+    <button type="button" id="submitBtn" class="btn-submit" onclick="generateProPDF()">
+      PDF Erstellen & Öffnen
     </button>
   </form>
 </div>
 
-<!-- DIESES ELEMENT WIRD FÜR DAS PDF BEFÜLLT -->
-<div id="pdf-wrapper">
-  <h2>SCHICHTBUCH PROTOKOLL - BANDGALVANIK</h2>
-  <div style="margin-bottom: 10px; font-size: 10pt;">
-    <strong>Datum:</strong> <span id="pdf-datum"></span> | 
-    <strong>Schicht:</strong> <span id="pdf-schicht"></span> | 
-    <strong>Schichtführer:</strong> <span id="pdf-bediener"></span>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 10%;">Anlage</th>
-        <th style="width: 25%;">Ausschuss & Ursache</th>
-        <th style="width: 20%;">Aufträge (Akt. / Folge)</th>
-        <th style="width: 25%;">Stationen / Defekte / Material</th>
-        <th style="width: 20%;">To-Do Folgeschicht</th>
-      </tr>
-    </thead>
-    <tbody id="pdf-table-body"></tbody>
-  </table>
-</div>
+<!-- DIESER CONTAINER BAUT DIE DRUCK-SEITEN AUF -->
+<div id="pdf-container"></div>
 
 <script>
   document.getElementById('datum').valueAsDate = new Date();
@@ -191,88 +240,158 @@
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
-  async function openPDF() {
+  // Prüft, ob eine Anlage tatsächlich beschrieben wurde
+  function isAnlageUsed(a) {
+    const menge = document.getElementById(`ausschuss_menge_${a}`).value.trim();
+    const grund = document.getElementById(`ausschuss_grund_${a}`).value;
+    const det = document.getElementById(`ausschuss_details_${a}`).value.trim();
+    const akt = document.getElementById(`auftrag_akt_${a}`).value.trim();
+    const folg = document.getElementById(`auftrag_folge_${a}`).value.trim();
+    const todo = document.getElementById(`todo_${a}`).value.trim();
+    const stat = document.getElementById(`stationen_${a}`).value.trim();
+    const def = document.getElementById(`defekte_${a}`).value.trim();
+    const mat = document.getElementById(`material_${a}`).value.trim();
+
+    return (menge !== '' && menge !== '0') || grund !== 'Kein Ausschuss' || det !== '' || akt !== '' || folg !== '' || todo !== '' || stat !== '' || def !== '' || mat !== '';
+  }
+
+  async function generateProPDF() {
     const btn = document.getElementById('submitBtn');
-    btn.innerText = "PDF wird generiert...";
+    btn.innerText = "Erstelle edles PDF...";
     btn.style.opacity = "0.5";
 
-    // 1. Daten ausfüllen
     const datumVal = document.getElementById('datum').value || '-';
     const schichtVal = document.getElementById('schicht').value;
     const bedienerVal = document.getElementById('bediener').value || '-';
 
-    document.getElementById('pdf-datum').innerText = datumVal;
-    document.getElementById('pdf-schicht').innerText = schichtVal;
-    document.getElementById('pdf-bediener').innerText = bedienerVal;
+    const pdfContainer = document.getElementById('pdf-container');
+    pdfContainer.innerHTML = '';
 
-    const tbody = document.getElementById('pdf-table-body');
-    tbody.innerHTML = '';
+    // Welche Anlagen haben Daten?
+    let activeAnlagen = ['801', '802', '803', '804'].filter(a => isAnlageUsed(a));
+    
+    // Falls gar nichts ausgefüllt wurde, drucken wir zumindest die erste Anlage
+    if (activeAnlagen.length === 0) activeAnlagen = ['801'];
 
-    ['801', '802', '803', '804'].forEach(a => {
+    // Seiten im HTML aufbauen (Jede Anlage bekommt genau 1 A4 Seite)
+    activeAnlagen.forEach((a, index) => {
       const aMenge = document.getElementById(`ausschuss_menge_${a}`).value || '0';
       const aGrund = document.getElementById(`ausschuss_grund_${a}`).value;
-      const aDet = document.getElementById(`ausschuss_details_${a}`).value;
+      const aDet = document.getElementById(`ausschuss_details_${a}`).value || 'Keine Angabe';
       const aktAuf = document.getElementById(`auftrag_akt_${a}`).value || '-';
       const folgAuf = document.getElementById(`auftrag_folge_${a}`).value || '-';
-      const todo = document.getElementById(`todo_${a}`).value || '-';
-      const stat = document.getElementById(`stationen_${a}`).value;
-      const def = document.getElementById(`defekte_${a}`).value;
-      const mat = document.getElementById(`material_${a}`).value;
+      const todo = document.getElementById(`todo_${a}`).value || 'Keine Aufgaben';
+      const stat = document.getElementById(`stationen_${a}`).value || 'Keine Auffälligkeiten';
+      const def = document.getElementById(`defekte_${a}`).value || 'Keine Defekte';
+      const mat = document.getElementById(`material_${a}`).value || 'Kein Materialbedarf';
 
-      let stationenText = '';
-      if(stat) stationenText += `<b>Stationen:</b> ${stat}<br>`;
-      if(def) stationenText += `<b>Defekte:</b> ${def}<br>`;
-      if(mat) stationenText += `<b>Material/KVP:</b> ${mat}`;
-      if(!stationenText) stationenText = 'Keine Besonderheiten';
+      pdfContainer.innerHTML += `
+        <div class="pdf-page" id="pdf-page-${index}">
+          <div class="pdf-header">
+            <div>
+              <h2>SCHICHTBUCH PROTOKOLL</h2>
+              <div style="font-size: 10pt; opacity: 0.8; margin-top: 2px;">Bandgalvanik Produktionsbericht</div>
+            </div>
+            <div class="badge">ANLAGE ${a}</div>
+          </div>
 
-      tbody.innerHTML += `
-        <tr>
-          <td><b>Anlage ${a}</b></td>
-          <td class="pdf-red">Menge: ${aMenge}<br>Grund: ${aGrund}<br>${aDet ? '<i>'+aDet+'</i>' : ''}</td>
-          <td><b>Akt:</b> ${aktAuf}<br><b>Folge:</b> ${folgAuf}</td>
-          <td>${stationenText}</td>
-          <td>${todo}</td>
-        </tr>
+          <div class="pdf-meta-grid">
+            <div class="pdf-meta-item">
+              <label>Datum</label>
+              <div>${datumVal}</div>
+            </div>
+            <div class="pdf-meta-item">
+              <label>Schicht</label>
+              <div>${schichtVal}</div>
+            </div>
+            <div class="pdf-meta-item">
+              <label>Schichtführer</label>
+              <div>${bedienerVal}</div>
+            </div>
+          </div>
+
+          <div class="pdf-section">
+            <div class="pdf-section-title red">Ausschuss & Ursachen</div>
+            <div class="pdf-grid-2" style="margin-bottom: 10px;">
+              <div><strong style="font-size: 9pt; color: #64748b;">Menge:</strong> <span style="font-weight: bold; color: #dc2626;">${aMenge}</span></div>
+              <div><strong style="font-size: 9pt; color: #64748b;">Hauptursache:</strong> <span>${aGrund}</span></div>
+            </div>
+            <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Details / Beschreibung:</strong>
+            <div class="pdf-text-box" style="margin-top: 4px;">${aDet}</div>
+          </div>
+
+          <div class="pdf-section">
+            <div class="pdf-section-title">Auftragsstatus</div>
+            <div class="pdf-grid-2">
+              <div>
+                <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Aktueller Auftrag:</strong>
+                <div class="pdf-text-box" style="margin-top: 4px;">${aktAuf}</div>
+              </div>
+              <div>
+                <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Folgeauftrag:</strong>
+                <div class="pdf-text-box" style="margin-top: 4px;">${folgAuf}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pdf-section">
+            <div class="pdf-section-title green">To-Do für Folgeschicht</div>
+            <div class="pdf-text-box">${todo}</div>
+          </div>
+
+          <div class="pdf-section">
+            <div class="pdf-section-title">Stationen, Defekte & KVP</div>
+            <div style="margin-bottom: 8px;">
+              <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Auffälligkeiten an Stationen:</strong>
+              <div class="pdf-text-box" style="margin-top: 2px;">${stat}</div>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Defekte & Störungen:</strong>
+              <div class="pdf-text-box" style="margin-top: 2px;">${def}</div>
+            </div>
+            <div>
+              <strong style="font-size: 8pt; text-transform: uppercase; color: #64748b;">Material / KVP / Werkzeug:</strong>
+              <div class="pdf-text-box" style="margin-top: 2px;">${mat}</div>
+            </div>
+          </div>
+
+          <div class="pdf-footer">
+            <span>Schichtbuch Galvanik - Automatisch generiert</span>
+            <span>Seite ${index + 1} von ${activeAnlagen.length}</span>
+          </div>
+        </div>
       `;
     });
 
-    // 2. Element sichtbar schalten, damit der Canvas-Render-Prozess den Text sicher erfasst
-    const pdfElement = document.getElementById('pdf-wrapper');
-    pdfElement.style.visibility = 'visible';
+    // PDF mit jsPDF erstellen
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('portrait', 'pt', 'a4');
 
-    try {
-      const canvas = await html2canvas(pdfElement, {
+    for (let i = 0; i < activeAnlagen.length; i++) {
+      const pageEl = document.getElementById(`pdf-page-${i}`);
+      
+      const canvas = await html2canvas(pageEl, {
         scale: 2,
         useCORS: true,
         logging: false
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const { jsPDF } = window.jspdf;
-      
-      const pdf = new jsPDF('landscape', 'pt', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'JPEG', 0, 10, pdfWidth, pdfHeight);
-
-      // PDF als direkten Blob-Stream erzeugen
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-
-      pdfElement.style.visibility = 'hidden';
-
-      // Öffnet die fertige PDF direkt im aktuellen Fenster
-      window.location.href = pdfUrl;
-
-    } catch (err) {
-      alert("Fehler beim Erstellen der PDF: " + err);
-      pdfElement.style.visibility = 'hidden';
-    } finally {
-      btn.innerText = "PDF Erstellen & Ansehen";
-      btn.style.opacity = "1";
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
+
+    const pdfBlob = pdf.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+    btn.innerText = "PDF Erstellen & Öffnen";
+    btn.style.opacity = "1";
+
+    // Direkt im iPhone öffnen
+    window.location.href = pdfUrl;
   }
 </script>
 
