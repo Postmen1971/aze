@@ -145,10 +145,12 @@
             cursor: pointer;
         }
 
-        /* STYLING FÜR DAS PDF (Standardmäßig ausgeblendet) */
+        /* PDF VORLAGE: Wie in der ursprünglichen Version außerhalb des Sichtbereichs */
         #pdf-template {
-            display: none; /* Auf der Webseite ausblenden */
-            width: 1000px;
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 1100px;
             background-color: #ffffff;
             color: #000000;
             padding: 15px;
@@ -539,7 +541,7 @@
             saveCurrentState();
         }
 
-        // FEHLERFREIE PDF GENERIERUNG
+        // URSPRÜNGLICHE DRUCK-/SPEICHER-FUNKTION
         function generatePDFAndOpen() {
             const formData = collectFormData();
             pushToHistory(formData);
@@ -602,26 +604,17 @@
                 `;
             });
 
-            // Vorlage kurz einblenden, damit html2pdf alles sauber verarbeiten kann
             const element = document.getElementById('pdf-template');
-            element.style.display = 'block';
 
             const opt = {
-                margin:       [6, 6, 6, 6],
+                margin:       [5, 5, 5, 5],
                 filename:     `Schichtprotokoll_${formData.datum}_${formData.schicht}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, logging: false },
+                html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            // PDF rendern, öffnen und Vorlage danach wieder ausblenden
-            html2pdf().set(opt).from(element).outputPdf('bloburl').then(function(pdfUrl) {
-                element.style.display = 'none';
-                window.open(pdfUrl, '_blank');
-            }).catch(function(err) {
-                element.style.display = 'none';
-                alert("Fehler beim Erstellen des PDFs: " + err);
-            });
+            html2pdf().set(opt).from(element).save();
         }
 
         document.addEventListener('input', function(e) {
