@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Schichtbuch Bandgalvanik</title>
-  <!-- html2pdf & jsPDF Library für Mobile -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root {
@@ -18,193 +17,38 @@
       --border-color: #374151;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-size: 14px; }
+    .container { max-width: 480px; margin: 0 auto; padding-bottom: 20px; }
+    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 12px; color: #ffffff; }
 
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      padding: 10px;
-      font-size: 14px;
-    }
-
-    .container {
-      max-width: 480px;
-      margin: 0 auto;
-      padding-bottom: 20px;
-    }
-
-    h1 {
-      font-size: 1.3rem;
-      text-align: center;
-      margin-bottom: 12px;
-      color: #ffffff;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 12px;
-      border: 1px solid var(--border-color);
-    }
-
-    .card-title {
-      font-size: 1rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid var(--accent-blue);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
+    .card { background: var(--card-bg); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid var(--accent-blue); display: flex; justify-content: space-between; }
     .card-title.red { border-bottom-color: var(--accent-red); }
     .card-title.green { border-bottom-color: var(--accent-green); }
 
-    label {
-      display: block;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 8px;
-      margin-bottom: 3px;
-    }
+    label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 3px; }
+    input, select, textarea { width: 100%; padding: 10px; background: #111827; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
+    textarea { resize: vertical; min-height: 55px; }
 
-    input, select, textarea {
-      width: 100%;
-      padding: 10px;
-      background: #111827;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.9rem;
-      outline: none;
-    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tab-container { display: flex; gap: 4px; margin-bottom: 12px; }
+    .tab-btn { flex: 1; padding: 10px 0; background: #1f2937; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; font-weight: bold; font-size: 0.85rem; cursor: pointer; text-align: center; }
+    .tab-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    
+    .anlage-content { display: none; }
+    .anlage-content.active { display: block; }
 
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--accent-blue);
-    }
+    .btn-submit { width: 100%; padding: 14px; background: var(--accent-green); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-    textarea {
-      resize: vertical;
-      min-height: 55px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    /* Tabs für Anlagen */
-    .tab-container {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 12px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      padding: 10px 0;
-      background: #1f2937;
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    .tab-btn.active {
-      background: var(--accent-blue);
-      color: #fff;
-      border-color: var(--accent-blue);
-    }
-
-    .anlage-content {
-      display: none;
-    }
-
-    .anlage-content.active {
-      display: block;
-    }
-
-    /* Sende-Button */
-    .btn-submit {
-      width: 100%;
-      padding: 14px;
-      background: var(--accent-green);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-submit:active {
-      opacity: 0.8;
-    }
-
-    /* PDF Druck-Layout (Unsichtbar im Formular, wird sauber gerendert) */
-    #pdf-template {
-      position: absolute;
-      left: -9999px;
-      top: -9999px;
-      width: 1000px;
-      background: #ffffff;
-      color: #000000;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-    }
-
-    #pdf-template h2 {
-      text-align: center;
-      margin-bottom: 8px;
-      font-size: 14pt;
-      border-bottom: 2px solid #000;
-      padding-bottom: 5px;
-    }
-
-    #pdf-template table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    #pdf-template th, #pdf-template td {
-      border: 1px solid #444;
-      padding: 6px;
-      text-align: left;
-      vertical-align: top;
-      font-size: 8.5pt;
-    }
-
-    #pdf-template th {
-      background-color: #f0f0f0;
-      font-weight: bold;
-    }
-
-    .pdf-header-info {
-      margin-bottom: 12px;
-      font-size: 9.5pt;
-    }
-
-    .pdf-ausschuss {
-      color: #b91c1c;
-    }
+    /* Unsichtbares Render-Template */
+    #pdf-template { position: absolute; left: -9999px; top: -9999px; width: 1000px; background: #ffffff; color: #000000; padding: 20px; font-family: Arial, sans-serif; }
+    #pdf-template h2 { text-align: center; margin-bottom: 8px; font-size: 14pt; border-bottom: 2px solid #000; padding-bottom: 5px; }
+    #pdf-template table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    #pdf-template th, #pdf-template td { border: 1px solid #444; padding: 6px; text-align: left; vertical-align: top; font-size: 8.5pt; }
+    #pdf-template th { background-color: #f0f0f0; font-weight: bold; }
+    .pdf-ausschuss { color: #b91c1c; }
   </style>
 </head>
 <body>
@@ -212,7 +56,6 @@
 <div class="container">
   <h1>Schichtbuch Bandgalvanik</h1>
 
-  <!-- Allgemeine Schichtdaten -->
   <div class="card">
     <div class="card-title">Schichtdaten</div>
     <div class="grid-2">
@@ -233,7 +76,6 @@
     <input type="text" id="bediener" placeholder="Name(n) eintragen">
   </div>
 
-  <!-- Tabs für die 4 Anlagen -->
   <div class="tab-container">
     <button class="tab-btn active" onclick="showAnlage('801', event)">A 801</button>
     <button class="tab-btn" onclick="showAnlage('802', event)">A 802</button>
@@ -242,13 +84,11 @@
   </div>
 
   <form id="schichtForm">
-    <!-- Generierung der 4 Anlagen-Formulare -->
     <script>
       const anlagen = ['801', '802', '803', '804'];
       anlagen.forEach((a, index) => {
         document.write(`
           <div id="anlage-${a}" class="anlage-content ${index === 0 ? 'active' : ''}">
-            
             <div class="card">
               <div class="card-title red">Ausschuss - Anlage ${a}</div>
               <div class="grid-2">
@@ -290,36 +130,29 @@
               <div class="card-title">Stationen & Besonderheiten</div>
               <label>Auffälligkeiten an den Stationen</label>
               <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean, E-Clean, Nickel, Palladium, U-Turm, Gold, Zinn, Befettung..."></textarea>
-
               <label>Defekte & technische Störungen</label>
               <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
-
               <label>Fehlendes Werkzeug / Materialien / KVP</label>
               <textarea id="material_${a}" placeholder="Bestellungen, fehlende Teile, Verbesserungen"></textarea>
             </div>
-
           </div>
         `);
       });
     </script>
 
     <button type="button" id="submitBtn" class="btn-submit" onclick="processPDF()">
-      <span>PDF erstellen & Teilen</span>
+      PDF Erstellen & Mail Öffnen
     </button>
   </form>
-
 </div>
 
-<!-- UNSICHTBARER PDF-CONTAINER -->
 <div id="pdf-template">
   <h2>SCHICHTBUCH PROTOKOLL - BANDGALVANIK</h2>
-  
-  <div class="pdf-header-info">
+  <div style="margin-bottom: 12px; font-size: 9.5pt;">
     <strong>Datum:</strong> <span id="pdf-datum"></span> | 
     <strong>Schicht:</strong> <span id="pdf-schicht"></span> | 
     <strong>Schichtführer:</strong> <span id="pdf-bediener"></span>
   </div>
-
   <table>
     <thead>
       <tr>
@@ -330,35 +163,34 @@
         <th style="width: 20%;">To-Do Folgeschicht</th>
       </tr>
     </thead>
-    <tbody id="pdf-table-body">
-      <!-- Wird dynamisch per JS befüllt -->
-    </tbody>
+    <tbody id="pdf-table-body"></tbody>
   </table>
 </div>
 
 <script>
-  // Datum auf heute setzen
+  // TRAGE HIER DEINE 3 MALE-ADRESSEN EIN (Kommagetrennt):
+  const EMPFAENGER = "adresse1@firma.de,adresse2@firma.de,adresse3@firma.de";
+
   document.getElementById('datum').valueAsDate = new Date();
 
-  // Tab-Steuerung
   function showAnlage(anl, event) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.anlage-content').forEach(c => c.classList.remove('active'));
-
     event.target.classList.add('active');
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
-  // Hauptfunktion zur PDF-Erzeugung und zum Teilen via Mail-App
   async function processPDF() {
     const btn = document.getElementById('submitBtn');
-    btn.innerText = "PDF wird erstellt...";
-    btn.style.opacity = "0.6";
+    btn.innerText = "Erstelle PDF...";
 
-    // 1. Daten ins PDF-Template übertragen
-    document.getElementById('pdf-datum').innerText = document.getElementById('datum').value || '-';
-    document.getElementById('pdf-schicht').innerText = document.getElementById('schicht').value;
-    document.getElementById('pdf-bediener').innerText = document.getElementById('bediener').value || '-';
+    const datumVal = document.getElementById('datum').value || '-';
+    const schichtVal = document.getElementById('schicht').value;
+    const bedienerVal = document.getElementById('bediener').value || '-';
+
+    document.getElementById('pdf-datum').innerText = datumVal;
+    document.getElementById('pdf-schicht').innerText = schichtVal;
+    document.getElementById('pdf-bediener').innerText = bedienerVal;
 
     const tbody = document.getElementById('pdf-table-body');
     tbody.innerHTML = '';
@@ -367,12 +199,9 @@
       const aMenge = document.getElementById(`ausschuss_menge_${a}`).value || '0';
       const aGrund = document.getElementById(`ausschuss_grund_${a}`).value;
       const aDet = document.getElementById(`ausschuss_details_${a}`).value;
-
       const aktAuf = document.getElementById(`auftrag_akt_${a}`).value || '-';
       const folgAuf = document.getElementById(`auftrag_folge_${a}`).value || '-';
-
       const todo = document.getElementById(`todo_${a}`).value || '-';
-
       const stat = document.getElementById(`stationen_${a}`).value;
       const def = document.getElementById(`defekte_${a}`).value;
       const mat = document.getElementById(`material_${a}`).value;
@@ -383,63 +212,43 @@
       if(mat) stationenText += `<b>Material/KVP:</b> ${mat}`;
       if(!stationenText) stationenText = 'Keine Besonderheiten';
 
-      const row = `
+      tbody.innerHTML += `
         <tr>
           <td><b>Anlage ${a}</b></td>
-          <td class="pdf-ausschuss">
-            <b>Menge:</b> ${aMenge}<br>
-            <b>Grund:</b> ${aGrund}<br>
-            ${aDet ? '<i>' + aDet + '</i>' : ''}
-          </td>
-          <td>
-            <b>Akt:</b> ${aktAuf}<br>
-            <b>Folge:</b> ${folgAuf}
-          </td>
+          <td class="pdf-ausschuss"><b>Menge:</b> ${aMenge}<br><b>Grund:</b> ${aGrund}<br>${aDet ? '<i>'+aDet+'</i>' : ''}</td>
+          <td><b>Akt:</b> ${aktAuf}<br><b>Folge:</b> ${folgAuf}</td>
           <td>${stationenText}</td>
           <td>${todo}</td>
         </tr>
       `;
-      tbody.innerHTML += row;
     });
 
-    // 2. Erzeugung der PDF als Blob/Datei
     const element = document.getElementById('pdf-template');
-    const filename = `Schichtprotokoll_${document.getElementById('schicht').value}_${document.getElementById('datum').value}.pdf`;
+    const filename = `Schichtprotokoll_${schichtVal}_${datumVal}.pdf`;
 
     const opt = {
       margin:       0.3,
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      html2canvas:  { scale: 2, useCORS: true },
       jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
     };
 
-    try {
-      // Erstelle PDF als ArrayBuffer/Blob für das Teilen
-      const worker = html2pdf().set(opt).from(element);
-      const pdfBlob = await worker.output('blob');
+    // 1. PDF herunterladen
+    await html2pdf().set(opt).from(element).save();
 
-      // Erstelle File-Objekt für System-Share
-      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+    btn.innerText = "PDF Erstellen & Mail Öffnen";
 
-      // 3. Öffnen des nativen Teilen-Menüs (Mail, WhatsApp, Dateien speichern etc.)
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          title: 'Schichtbuch Protokoll',
-          text: `Schichtprotokoll vom ${document.getElementById('datum').value} (${document.getElementById('schicht').value})`,
-          files: [pdfFile]
-        });
-      } else {
-        // Fallback für Desktop/ältere Browser: Direkter Download
-        html2pdf().set(opt).from(element).save();
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Fehler beim Erstellen der PDF. Bitte versuche es erneut.");
-    } finally {
-      btn.innerText = "PDF erstellen & Teilen";
-      btn.style.opacity = "1";
-    }
+    // 2. Benutzer-Anweisung & Mail-App aufrufen
+    setTimeout(() => {
+      alert("PDF wurde heruntergeladen!\n\nTippe gleich in der Mail-App einfach auf die Büroklammer/Anhang, um die heruntergeladene PDF anzuhängen.");
+      
+      const subject = encodeURIComponent(`Schichtprotokoll ${schichtVal} - ${datumVal}`);
+      const body = encodeURIComponent(`Hallo zusammen,\n\nanbei befindet sich das Schichtprotokoll vom ${datumVal} (${schichtVal}).\n\nSchichtführer: ${bedienerVal}`);
+      
+      // Öffnet die Mail-App mit Empfängern, Betreff und Text
+      window.location.href = `mailto:${EMPFAENGER}?subject=${subject}&body=${body}`;
+    }, 1000);
   }
 </script>
 
