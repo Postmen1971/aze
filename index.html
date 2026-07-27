@@ -49,6 +49,29 @@
     .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
     .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
 
+    /* Bearbeitungs-Banner */
+    .edit-mode-banner {
+      display: none;
+      background: var(--accent-orange);
+      color: #000;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+    .btn-cancel-edit {
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-top: 6px;
+      cursor: pointer;
+    }
+
     /* Modal / Archiv CSS */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
     .modal-content { background: var(--card-bg); border-radius: 10px; width: 100%; max-width: 450px; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid var(--border-color); padding: 15px; }
@@ -184,6 +207,11 @@
     📁 Schichtbuch-Archiv (letzte 50 Einträge)
   </button>
 
+  <div id="editBanner" class="edit-mode-banner">
+    ⚠️ Du bearbeitest einen bestehenden Archiv-Eintrag!<br>
+    <button type="button" class="btn-cancel-edit" onclick="cancelEditMode()">Bearbeitung abbrechen & neue Schicht starten</button>
+  </div>
+
   <div class="card">
     <div class="card-title">Schichtdaten</div>
     <div class="grid-2">
@@ -304,7 +332,7 @@
             <div class="card">
               <div class="card-title">Stationen & Besonderheiten</div>
               <label>Auffälligkeiten an den Stationen</label>
-              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, US-Clean..."></textarea>
+              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, U-Clean..."></textarea>
               <label>Defekte & technische Störungen</label>
               <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
               <label>Fehlendes Werkzeug / Materialien / KVP</label>
@@ -320,7 +348,7 @@
       PDF Erstellen & Öffnen
     </button>
     <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
-      Neues Protokoll starten (Archivieren & Zurückstellen)
+      Schicht zurückstellen & archivieren
     </button>
   </form>
 </div>
@@ -341,6 +369,9 @@
 <div id="pdf-container"></div>
 
 <script>
+  // Aktuell geladener Archiv-Eintrag (null = neues Protokoll)
+  let currentEditingArchiveId = null;
+
   // Initiales Datum
   document.getElementById('datum').valueAsDate = new Date();
 
@@ -351,7 +382,6 @@
     document.getElementById(`anlage-${anl}`).classList.add('active');
   }
 
-  // Auto-Save in LocalStorage bei jeder Eingabe
   const formElement = id => document.getElementById(id);
 
   function getCurrentFormData() {
@@ -370,6 +400,11 @@
         localStorage.setItem('schichtbuch_' + el.id, el.value);
       }
     });
+    if (currentEditingArchiveId) {
+      localStorage.setItem('schichtbuch_current_editing_id', currentEditingArchiveId);
+    } else {
+      localStorage.removeItem('schichtbuch_current_editing_id');
+    }
   }
 
   function loadFromLocalStorage() {
@@ -383,6 +418,28 @@
     if (!localStorage.getItem('schichtbuch_datum')) {
       document.getElementById('datum').valueAsDate = new Date();
     }
+
+    const savedEditingId = localStorage.getItem('schichtbuch_current_editing_id');
+    if (savedEditingId) {
+      currentEditingArchiveId = parseInt(savedEditingId, 10);
+      updateEditBanner();
+    }
+  }
+
+  function updateEditBanner() {
+    const banner = document.getElementById('editBanner');
+    if (currentEditingArchiveId) {
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  function cancelEditMode() {
+    currentEditingArchiveId = null;
+    localStorage.removeItem('schichtbuch_current_editing_id');
+    updateEditBanner();
+    alert("Bearbeitungsmodus aufgehoben. Ein Zurückstellen erstellt nun wieder einen neuen Archiv-Eintrag.");
   }
 
   // ARCHIV LOGIK
@@ -394,22 +451,47 @@
 
     const currentData = getCurrentFormData();
     
-    // Prüfen, ob wenigstens ein Grundinhalt existiert
     const datum = currentData.datum || new Date().toISOString().split('T')[0];
     const schicht = currentData.schicht || 'Unbekannt';
     const bediener = currentData.bediener || 'Kein Name';
 
-    const entry = {
-      id: Date.now(),
-      timestamp: new Date().toLocaleString('de-DE'),
-      datum: datum,
-      schicht: schicht,
-      bediener: bediener,
-      formData: currentData
-    };
-
-    // Am Anfang einfügen (neueste zuerst)
-    archive.unshift(entry);
+    // Wenn wir einen Eintrag bearbeiten, überschreiben wir ihn!
+    if (currentEditingArchiveId) {
+      const index = archive.findIndex(e => e.id === currentEditingArchiveId);
+      if (index !== -1) {
+        archive[index] = {
+          id: currentEditingArchiveId,
+          timestamp: new Date().toLocaleString('de-DE') + ' (Bearbeitet)',
+          datum: datum,
+          schicht: schicht,
+          bediener: bediener,
+          formData: currentData
+        };
+      } else {
+        // Falls aus irgendeinem Grund nicht gefunden, neu anlegen
+        currentEditingArchiveId = Date.now();
+        archive.unshift({
+          id: currentEditingArchiveId,
+          timestamp: new Date().toLocaleString('de-DE'),
+          datum: datum,
+          schicht: schicht,
+          bediener: bediener,
+          formData: currentData
+        });
+      }
+    } else {
+      // Wenn es eine neue Schicht ist -> Neu anlegen
+      const newId = Date.now();
+      const entry = {
+        id: newId,
+        timestamp: new Date().toLocaleString('de-DE'),
+        datum: datum,
+        schicht: schicht,
+        bediener: bediener,
+        formData: currentData
+      };
+      archive.unshift(entry);
+    }
 
     // Maximal 50 Einträge behalten
     if (archive.length > 50) {
@@ -441,7 +523,7 @@
             <div style="color:var(--text-muted); font-size:0.75rem;">Bediener: ${item.bediener}</div>
             <div style="color:#6b7280; font-size:0.7rem;">Archiviert: ${item.timestamp}</div>
           </div>
-          <button class="btn-load" onclick="loadArchiveEntry(${item.id})">In Formular laden & bearbeiten</button>
+          <button class="btn-load" onclick="loadArchiveEntry(${item.id})">Laden & Bearbeiten</button>
         `;
         list.appendChild(el);
       });
@@ -462,16 +544,19 @@
 
     const entry = archive.find(e => e.id === id);
     if (entry && entry.formData) {
-      if (confirm(`Möchtest du die Schicht vom ${entry.datum} (${entry.schicht}) in das Formular laden? Aktuelle ungespeicherte Eingaben werden überschrieben.`)) {
+      if (confirm(`Möchtest du die Schicht vom ${entry.datum} (${entry.schicht}) laden? Alle Änderungen überschreiben diesen Eintrag im Archiv.`)) {
         Object.keys(entry.formData).forEach(key => {
           const field = document.getElementById(key);
           if (field) {
             field.value = entry.formData[key];
           }
         });
+        
+        currentEditingArchiveId = id;
         saveToLocalStorage();
+        updateEditBanner();
         closeArchiveModal();
-        alert("Eintrag erfolgreich geladen. Du kannst ihn jetzt bearbeiten oder neu als PDF ausdrucken.");
+        alert("Eintrag geladen. Wenn du nun Änderungen vornimmst und archivierst/zurückstellst, wird dieser Eintrag aktualisiert (überschrieben).");
       }
     }
   }
@@ -480,16 +565,27 @@
   document.addEventListener('DOMContentLoaded', () => {
     loadFromLocalStorage();
     document.querySelectorAll('input, select, textarea').forEach(el => {
-      el.addEventListener('input', saveToLocalStorage);
-      el.addEventListener('change', saveToLocalStorage);
+      el.addEventListener('input', () => {
+        saveToLocalStorage();
+        // Falls wir im Bearbeitungsmodus sind, Änderungen direkt ins Archiv spiegeln
+        if (currentEditingArchiveId) archiveCurrentState();
+      });
+      el.addEventListener('change', () => {
+        saveToLocalStorage();
+        if (currentEditingArchiveId) archiveCurrentState();
+      });
     });
   });
 
-  // Neues Protokoll starten: Archivieren, Datum auf heute, Felder leeren, aber Artikelnummern behalten
+  // Zurückstellen & Archivieren
   function resetFormKeepArtikel() {
-    if (confirm("Möchtest du diese Schicht archivieren und ein neues Protokoll starten? Das alte Protokoll bleibt im Archiv erhalten.")) {
+    const promptMsg = currentEditingArchiveId 
+      ? "Änderungen an diesem Archiv-Eintrag speichern, den Eintrag aktualisieren und eine neue Schicht starten?"
+      : "Möchtest du diese Schicht archivieren und ein neues Protokoll starten?";
+
+    if (confirm(promptMsg)) {
       
-      // Zuerst aktuelles Protokoll archivieren
+      // Zuerst aktuelles Protokoll speichern / überschreiben
       archiveCurrentState();
 
       const savedArtAkt = {};
@@ -499,6 +595,9 @@
         savedArtAkt[a] = formElement(`art_akt_${a}`).value;
         savedArtFolge[a] = formElement(`art_folge_${a}`).value;
       });
+
+      // Bearbeitungsmodus zurücksetzen für die neue Schicht
+      currentEditingArchiveId = null;
 
       // Formular-LocalStorage löschen (Archiv behalten)
       Object.keys(localStorage).forEach(key => {
@@ -518,7 +617,8 @@
       });
 
       saveToLocalStorage();
-      alert("Schicht wurde erfolgreich archiviert! Neues Formular ist bereit.");
+      updateEditBanner();
+      alert("Schicht wurde erfolgreich im Archiv gespeichert/aktualisiert! Neues Formular bereit.");
     }
   }
 
@@ -526,6 +626,9 @@
     const btn = document.getElementById('submitBtn');
     btn.innerText = "Erstelle Schichtblatt...";
     btn.style.opacity = "0.5";
+
+    // Beim Generieren des PDFs auch sicherstellen, dass Änderungen im Archiv gesichert sind
+    archiveCurrentState();
 
     const datumVal = formElement('datum').value || '-';
     const schichtVal = formElement('schicht').value;
