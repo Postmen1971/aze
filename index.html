@@ -85,6 +85,12 @@
     .archive-date { font-weight: bold; color: var(--accent-blue); }
     .btn-load { background: var(--accent-green); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
 
+    .confirm-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+    .btn-modal-action { padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn-modal-primary { background: var(--accent-blue); color: #fff; }
+    .btn-modal-secondary { background: #4b5563; color: #fff; }
+    .btn-modal-cancel { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
+
     /* =========================================================
        PDF DESIGN (A4 Querformat: 1123px x 794px)
        ========================================================= */
@@ -347,8 +353,8 @@
     <button type="button" id="submitBtn" class="btn-submit" onclick="generateShiftPDF()">
       PDF Erstellen & Öffnen
     </button>
-    <button type="button" class="btn-reset" onclick="resetFormKeepArtikel()">
-      Schicht zurückstellen & archivieren
+    <button type="button" class="btn-reset" onclick="openResetModal()">
+      Neues Protokoll starten / Zurückstellen
     </button>
   </form>
 </div>
@@ -362,6 +368,30 @@
     </div>
     <div class="archive-list" id="archiveList">
       <!-- Dynamische Liste -->
+    </div>
+  </div>
+</div>
+
+<!-- RESET MODAL -->
+<div id="resetModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Formular zurückstellen</div>
+      <button class="modal-close" onclick="closeResetModal()">&times;</button>
+    </div>
+    <p style="font-size:0.9rem; color:var(--text-main); margin-bottom:10px;">
+      Möchtest du diese Schicht im Archiv speichern oder das Formular einfach leeren, ohne zu archivieren?
+    </p>
+    <div class="confirm-actions">
+      <button class="btn-modal-action btn-modal-primary" onclick="confirmReset(true)">
+        💾 Archivieren & Neues Protokoll starten
+      </button>
+      <button class="btn-modal-action btn-modal-secondary" onclick="confirmReset(false)">
+        🗑️ Nicht archivieren (Nur zurückstellen)
+      </button>
+      <button class="btn-modal-action btn-modal-cancel" onclick="closeResetModal()">
+        Abbrechen
+      </button>
     </div>
   </div>
 </div>
@@ -439,7 +469,7 @@
     currentEditingArchiveId = null;
     localStorage.removeItem('schichtbuch_current_editing_id');
     updateEditBanner();
-    alert("Bearbeitungsmodus aufgehoben. Ein Zurückstellen erstellt nun wieder einen neuen Archiv-Eintrag.");
+    alert("Bearbeitungsmodus aufgehoben.");
   }
 
   // ARCHIV LOGIK
@@ -468,7 +498,6 @@
           formData: currentData
         };
       } else {
-        // Falls aus irgendeinem Grund nicht gefunden, neu anlegen
         currentEditingArchiveId = Date.now();
         archive.unshift({
           id: currentEditingArchiveId,
@@ -480,7 +509,6 @@
         });
       }
     } else {
-      // Wenn es eine neue Schicht ist -> Neu anlegen
       const newId = Date.now();
       const entry = {
         id: newId,
@@ -536,6 +564,59 @@
     document.getElementById('archiveModal').style.display = 'none';
   }
 
+  function openResetModal() {
+    document.getElementById('resetModal').style.display = 'flex';
+  }
+
+  function closeResetModal() {
+    document.getElementById('resetModal').style.display = 'none';
+  }
+
+  function confirmReset(shouldArchive) {
+    closeResetModal();
+
+    if (shouldArchive) {
+      archiveCurrentState();
+    }
+
+    const savedArtAkt = {};
+    const savedArtFolge = {};
+
+    ['801', '802', '803', '804'].forEach(a => {
+      savedArtAkt[a] = formElement(`art_akt_${a}`).value;
+      savedArtFolge[a] = formElement(`art_folge_${a}`).value;
+    });
+
+    // Bearbeitungsmodus zurücksetzen für die neue Schicht
+    currentEditingArchiveId = null;
+
+    // Formular-LocalStorage löschen (Archiv behalten)
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('schichtbuch_') && key !== 'schichtbuch_archive') {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // Formular zurücksetzen
+    document.getElementById('schichtForm').reset();
+    document.getElementById('datum').valueAsDate = new Date();
+
+    // Artikelnummern wieder einfügen
+    ['801', '802', '803', '804'].forEach(a => {
+      formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
+      formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
+    });
+
+    saveToLocalStorage();
+    updateEditBanner();
+
+    if (shouldArchive) {
+      alert("Schicht wurde archiviert und das Formular für die nächste Schicht zurückgestellt!");
+    } else {
+      alert("Formular wurde zurückgestellt (ohne zu archivieren).");
+    }
+  }
+
   function loadArchiveEntry(id) {
     let archive = [];
     try {
@@ -556,7 +637,7 @@
         saveToLocalStorage();
         updateEditBanner();
         closeArchiveModal();
-        alert("Eintrag geladen. Wenn du nun Änderungen vornimmst und archivierst/zurückstellst, wird dieser Eintrag aktualisiert (überschrieben).");
+        alert("Eintrag geladen. Wenn du nun Änderungen vornimmst und archivierst/zurückstellst, wird dieser Eintrag aktualisiert.");
       }
     }
   }
@@ -567,7 +648,6 @@
     document.querySelectorAll('input, select, textarea').forEach(el => {
       el.addEventListener('input', () => {
         saveToLocalStorage();
-        // Falls wir im Bearbeitungsmodus sind, Änderungen direkt ins Archiv spiegeln
         if (currentEditingArchiveId) archiveCurrentState();
       });
       el.addEventListener('change', () => {
@@ -576,51 +656,6 @@
       });
     });
   });
-
-  // Zurückstellen & Archivieren
-  function resetFormKeepArtikel() {
-    const promptMsg = currentEditingArchiveId 
-      ? "Änderungen an diesem Archiv-Eintrag speichern, den Eintrag aktualisieren und eine neue Schicht starten?"
-      : "Möchtest du diese Schicht archivieren und ein neues Protokoll starten?";
-
-    if (confirm(promptMsg)) {
-      
-      // Zuerst aktuelles Protokoll speichern / überschreiben
-      archiveCurrentState();
-
-      const savedArtAkt = {};
-      const savedArtFolge = {};
-
-      ['801', '802', '803', '804'].forEach(a => {
-        savedArtAkt[a] = formElement(`art_akt_${a}`).value;
-        savedArtFolge[a] = formElement(`art_folge_${a}`).value;
-      });
-
-      // Bearbeitungsmodus zurücksetzen für die neue Schicht
-      currentEditingArchiveId = null;
-
-      // Formular-LocalStorage löschen (Archiv behalten)
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('schichtbuch_') && key !== 'schichtbuch_archive') {
-          localStorage.removeItem(key);
-        }
-      });
-
-      // Formular zurücksetzen
-      document.getElementById('schichtForm').reset();
-      document.getElementById('datum').valueAsDate = new Date();
-
-      // Artikelnummern wieder einfügen
-      ['801', '802', '803', '804'].forEach(a => {
-        formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
-        formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
-      });
-
-      saveToLocalStorage();
-      updateEditBanner();
-      alert("Schicht wurde erfolgreich im Archiv gespeichert/aktualisiert! Neues Formular bereit.");
-    }
-  }
 
   async function generateShiftPDF() {
     const btn = document.getElementById('submitBtn');
