@@ -78,9 +78,50 @@
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
     .modal-title { font-size: 1.1rem; font-weight: bold; color: #fff; }
     .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
-    .archive-list { overflow-y: auto; flex: 1; margin-bottom: 10px; }
-    .archive-item { background: #111827; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .archive-item:hover { border-color: var(--accent-blue); }
+    .archive-list { overflow-y: auto; overflow-x: hidden; flex: 1; margin-bottom: 10px; }
+    
+    /* Swipeable List Items */
+    .archive-wrapper {
+      position: relative;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--accent-red);
+    }
+    .archive-delete-bg {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 15px;
+      padding-left: 15px;
+      background: var(--accent-red);
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+    .archive-delete-bg.left {
+      justify-content: flex-start;
+    }
+    .archive-item {
+      position: relative;
+      background: #111827;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+      transition: transform 0.15s ease-out;
+      touch-action: pan-y;
+      user-select: none;
+    }
     .archive-info { font-size: 0.85rem; }
     .archive-date { font-weight: bold; color: var(--accent-blue); }
     .btn-load { background: var(--accent-green); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
@@ -253,10 +294,14 @@
         <option value="Bandriss">Bandriss</option>
         <option value="Beschichtungsfehler">Beschichtungsfehler</option>
         <option value="Mechanischer Defekt">Mechanischer Defekt</option>
-        <option value="Verbogenes Werkzeug">Verbogenes Werkzeug</option>
-        <option value="Einstellteile Stanzerei">Einstellteile Stanzerei</option>
-        <option value="Reinigungsfehler / Flecken">Reinigungsfehler / Flecken</option>
-        <option value="Sonstiges">Sonstiges</option>
+        <option value="Werkzeug">Werkzeug</option>
+        <option value="QS- Prüfung">QS- Prüfung</option>
+        <option value="Verbogene Kontakte">Verbogene Kontakte</option>
+        <option value="Haftung">Haftung</option>
+        <option value="Sonstige">Sonstige</option>
+        <option value="Wickelgüte">Wickelgüte</option>
+        <option value="Anlagenstillstand">Anlagenstillstand</option>
+        <option value="Einstellteile">Einstellteile</option>
       `;
 
       anlagen.forEach((a, index) => {
@@ -365,6 +410,9 @@
     <div class="modal-header">
       <div class="modal-title">Schichtbuch-Archiv</div>
       <button class="modal-close" onclick="closeArchiveModal()">&times;</button>
+    </div>
+    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
+      💡 Eintrag nach links oder rechts wischen, um ihn zu löschen.
     </div>
     <div class="archive-list" id="archiveList">
       <!-- Dynamische Liste -->
@@ -529,6 +577,30 @@
     localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
   }
 
+  function deleteArchiveEntry(id) {
+    let archive = [];
+    try {
+      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
+    } catch (e) { archive = []; }
+
+    const entry = archive.find(e => e.id === id);
+    const label = entry ? `${entry.datum} (${entry.schicht})` : 'diesen Eintrag';
+
+    if (confirm(`Möchtest du ${label} wirklich dauerhaft aus dem Archiv löschen?`)) {
+      archive = archive.filter(e => e.id !== id);
+      localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
+
+      // Falls der gerade aktiv bearbeitete Eintrag gelöscht wurde -> Bearbeitungsmodus aufheben
+      if (currentEditingArchiveId === id) {
+        cancelEditMode();
+      }
+
+      openArchiveModal(); // Liste aktualisieren
+    } else {
+      openArchiveModal(); // Reset position
+    }
+  }
+
   function openArchiveModal() {
     const modal = document.getElementById('archiveModal');
     const list = document.getElementById('archiveList');
@@ -543,6 +615,19 @@
       list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Keine archivierten Schichten vorhanden.</div>';
     } else {
       archive.forEach((item) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'archive-wrapper';
+
+        const deleteBgRight = document.createElement('div');
+        deleteBgRight.className = 'archive-delete-bg';
+        deleteBgRight.innerHTML = '🗑️ Löschen';
+        deleteBgRight.onclick = () => deleteArchiveEntry(item.id);
+
+        const deleteBgLeft = document.createElement('div');
+        deleteBgLeft.className = 'archive-delete-bg left';
+        deleteBgLeft.innerHTML = '🗑️ Löschen';
+        deleteBgLeft.onclick = () => deleteArchiveEntry(item.id);
+
         const el = document.createElement('div');
         el.className = 'archive-item';
         el.innerHTML = `
@@ -551,13 +636,66 @@
             <div style="color:var(--text-muted); font-size:0.75rem;">Bediener: ${item.bediener}</div>
             <div style="color:#6b7280; font-size:0.7rem;">Archiviert: ${item.timestamp}</div>
           </div>
-          <button class="btn-load" onclick="loadArchiveEntry(${item.id})">Laden & Bearbeiten</button>
+          <button class="btn-load" onclick="event.stopPropagation(); loadArchiveEntry(${item.id})">Laden & Bearbeiten</button>
         `;
-        list.appendChild(el);
+
+        wrapper.appendChild(deleteBgRight);
+        wrapper.appendChild(deleteBgLeft);
+        wrapper.appendChild(el);
+        list.appendChild(wrapper);
+
+        // Swipe Handling (Touch & Mouse)
+        attachSwipeHandler(el, item.id);
       });
     }
 
     modal.style.display = 'flex';
+  }
+
+  function attachSwipeHandler(element, itemId) {
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+
+    const onStart = (e) => {
+      isDragging = true;
+      startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+      element.style.transition = 'none';
+    };
+
+    const onMove = (e) => {
+      if (!isDragging) return;
+      currentX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+      const diffX = currentX - startX;
+
+      if (Math.abs(diffX) < 120) {
+        element.style.transform = `translateX(${diffX}px)`;
+      }
+    };
+
+    const onEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      element.style.transition = 'transform 0.2s ease-out';
+      const diffX = currentX - startX;
+
+      if (Math.abs(diffX) > 70) {
+        element.style.transform = diffX > 0 ? 'translateX(100%)' : 'translateX(-100%)';
+        setTimeout(() => deleteArchiveEntry(itemId), 150);
+      } else {
+        element.style.transform = 'translateX(0px)';
+      }
+      startX = 0;
+      currentX = 0;
+    };
+
+    element.addEventListener('touchstart', onStart, { passive: true });
+    element.addEventListener('touchmove', onMove, { passive: true });
+    element.addEventListener('touchend', onEnd);
+
+    element.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
   }
 
   function closeArchiveModal() {
