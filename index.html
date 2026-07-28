@@ -226,7 +226,7 @@
   <h1>Schichtbuch Bandgalvanik</h1>
 
   <button type="button" class="btn-archive" onclick="openArchiveModal()">
-    📁 Schichtbuch-Archiv (letzte 50 Einträge)
+    📁 Schichtbuch-Archiv
   </button>
 
   <div id="editBanner" class="edit-mode-banner">
@@ -272,11 +272,12 @@
         <option value="Werkzeug">Werkzeug</option>
         <option value="QS- Prüfung">QS- Prüfung</option>
         <option value="Verbogene Kontakte">Verbogene Kontakte</option>
-        <option value="Haftung">Haftung</option>
         <option value="Sonstige">Sonstige</option>
         <option value="Wickelgüte">Wickelgüte</option>
         <option value="Anlagenstillstand">Anlagenstillstand</option>
         <option value="Einstellteile">Einstellteile</option>
+        <option value="Haftung">Haftung</option>
+        <option value="Unterbrechung">Unterbrechung</option>
       `;
 
       anlagen.forEach((a, index) => {
@@ -492,7 +493,19 @@
     alert("Bearbeitungsmodus aufgehoben.");
   }
 
-  // ARCHIV LOGIK
+  // Hilfsfunktion zum Sortieren der Einträge (Datum absteigend -> ID/Zeit absteigend)
+  function sortArchiveEntries(archive) {
+    return archive.sort((a, b) => {
+      const dateA = a.datum || '';
+      const dateB = b.datum || '';
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA); // Neuestes Datum oben
+      }
+      return (b.id || 0) - (a.id || 0); // Bei gleichem Datum neueste ID oben
+    });
+  }
+
+  // ARCHIV LOGIK (Keine Speicherbegrenzung mehr)
   function archiveCurrentState() {
     let archive = [];
     try {
@@ -519,7 +532,7 @@
         };
       } else {
         currentEditingArchiveId = Date.now();
-        archive.unshift({
+        archive.push({
           id: currentEditingArchiveId,
           timestamp: new Date().toLocaleString('de-DE'),
           datum: datum,
@@ -538,14 +551,11 @@
         bediener: bediener,
         formData: currentData
       };
-      archive.unshift(entry);
+      archive.push(entry);
     }
 
-    // Maximal 50 Einträge behalten
-    if (archive.length > 50) {
-      archive = archive.slice(0, 50);
-    }
-
+    // Nach Datum sortieren und ohne künstliche Begrenzung abspeichern
+    archive = sortArchiveEntries(archive);
     localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
   }
 
@@ -581,6 +591,8 @@
     try {
       archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
     } catch (e) { archive = []; }
+
+    archive = sortArchiveEntries(archive);
 
     if (archive.length === 0) {
       list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Keine archivierten Schichten vorhanden.</div>';
@@ -787,6 +799,7 @@
       <div class="pdf-page" id="pdf-shift-page">
         <div class="pdf-header">
           <div>
+            finalize Shift Logging
             <h2>SCHICHTBUCH PROTOKOLL</h2>
             <div style="font-size: 8.5pt; opacity: 0.8;">Bandgalvanik Gesamtbericht</div>
           </div>
