@@ -744,32 +744,53 @@ function setPhotoStatus(idx, text, cls) {
 // statt den rohen, unübersichtlichen OCR-Text einzufügen.
 // ---------------------------------------------------------
 function parseProductionData(rawText) {
-  const t = rawText.replace(/\r/g, "");
+  const lines = rawText.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(Boolean);
   const d = {};
 
-  // Gruppe = Anlage. Bevorzugt nach den bekannten Anlagen-Nummern
-  // 801-804 suchen (robuster als Positions-Regex bei mehrspaltigem
-  // OCR-Text, wo "Gruppe" und ihr Wert nicht direkt nebeneinander stehen).
-  let m = t.match(/\b(80[1-4])\b/);
-  if (m) {
-    d.gruppe = m[1];
-  } else {
-    m = t.match(/Gruppe[^\d]{0,20}(\d{2,4})/i);
-    if (m) d.gruppe = m[1];
+  // Anlage = "Gruppe". Bevorzugt bekannte Anlagen-Nummern 801-804 suchen
+  // (robuster als Positions-Regex bei mehrspaltigem OCR-Text).
+  let m = rawText.match(/\b(80[1-4])\b/);
+  if (m) d.gruppe = m[1];
+
+  // --- Artikel ---
+  const artikelClean = s => s.trim().replace(/^[:\s-]+/, "").replace(/[.,;:]+$/, "");
+  for (let i = 0; i < lines.length; i++) {
+    if (/artikel/i.test(lines[i])) {
+      let mm = lines[i].match(/artikel[^A-Za-z0-9]{0,5}([A-Za-z0-9][A-Za-z0-9\-.]{2,19})/i);
+      if (mm) { d.artikel = artikelClean(mm[1]); break; }
+      for (let j = 1; j <= 2 && i + j < lines.length; j++) {
+        const cand = lines[i + j];
+        if (!cand || /^(mengen|status|gruppe|kurzbezeichnung|arbeitsplatz)/i.test(cand)) continue;
+        const mm2 = cand.match(/([A-Za-z0-9]{3,10}[-.]?[A-Za-z0-9]{0,4})/);
+        if (mm2) { d.artikel = artikelClean(mm2[1]); break; }
+      }
+      if (d.artikel) break;
+    }
   }
 
-  m = t.match(/Artikel[^\n]*\n?\s*([A-Za-z0-9\-.]{3,20})/i);
-  if (m) d.artikel = m[1].trim();
+  // --- Mengen (Soll / Gut / Ausschuss) ---
+  const numRe = /\d{1,3}(?:\.\d{3})*(?:,\d+)?/g;
+  for (let i = 0; i < lines.length; i++) {
+    const isLabelLine = /mengen/i.test(lines[i]) ||
+      (/soll/i.test(lines[i]) && /ausschuss/i.test(lines[i])) ||
+      (/soll/i.test(lines[i]) && /gut/i.test(lines[i]));
+    if (isLabelLine) {
+      const combined = lines.slice(i, i + 4).join(" ");
+      let nums = (combined.match(numRe) || []).filter(n => n.replace(/[.,]/g, "").length >= 2);
+      if (nums.length >= 3) {
+        d.soll = nums[0]; d.gut = nums[1]; d.ausschuss = nums[2];
+        break;
+      }
+    }
+  }
 
-  // "Mengen (Soll / Gut / Ausschuss)" mit drei Zahlen
-  m = t.match(/Mengen[\s\S]{0,60}?([\d.,]{2,12})\s*\/\s*([\d.,]{2,12})\s*\/\s*([\d.,]{2,12})/i);
-  if (m) {
-    d.soll = m[1]; d.gut = m[2]; d.ausschuss = m[3];
-  } else {
-    // Fallback: einzelne beschriftete Felder oben im Screen
-    const gm = t.match(/Gutmenge[^\d]{0,10}([\d.,]{2,12})/i);
-    const am = t.match(/Ausschuss[^\d]{0,10}([\d.,]{2,12})/i);
+  // Fallback: einzelne beschriftete Felder oben im Screen (Gutmenge / Ausschuss separat)
+  if (!d.gut) {
+    const gm = rawText.match(/Gutmenge[^\d]{0,10}([\d.,]{2,12})/i);
     if (gm) d.gut = gm[1];
+  }
+  if (!d.ausschuss) {
+    const am = rawText.match(/Ausschuss[^\d]{0,10}([\d.,]{2,12})/i);
     if (am) d.ausschuss = am[1];
   }
 
@@ -777,15 +798,13 @@ function parseProductionData(rawText) {
 }
 
 function formatProductionData(d) {
-  const parts = [];
-  if (d.gruppe) parts.push(`Anlage ${d.gruppe}`);
-  if (d.artikel) parts.push(`Artikel ${d.artikel}`);
-  const mengen = [];
-  if (d.soll) mengen.push(`Soll ${d.soll}`);
-  if (d.gut) mengen.push(`Gut ${d.gut}`);
-  if (d.ausschuss) mengen.push(`Ausschuss ${d.ausschuss}`);
-  if (mengen.length) parts.push(mengen.join(" / "));
-  return parts.join(": ");
+  // Nur als kompakte Zeile verwenden, wenn ALLE relevanten Felder
+  // gefunden wurden - sonst lieber den vollständigen Rohtext behalten,
+  // damit keine Angaben (Artikel/Mengen) verloren gehen.
+  if (d.gruppe && d.artikel && d.soll && d.gut && d.ausschuss) {
+    return `Anlage ${d.gruppe}: Artikel ${d.artikel}: Soll ${d.soll} / Gut ${d.gut} / Ausschuss ${d.ausschuss}`;
+  }
+  return null;
 }
 
 async function handlePhotos(idx, fileList) {
