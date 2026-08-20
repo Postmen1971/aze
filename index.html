@@ -1,864 +1,942 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Schichtbuch Bandgalvanik</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    :root {
-      --bg-color: #121824;
-      --card-bg: #1e2638;
-      --accent-red: #ff4d4d;
-      --accent-blue: #3b82f6;
-      --accent-green: #10b981;
-      --accent-orange: #f59e0b;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --border-color: #374151;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Morgenrunde</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #f4f6f9;
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+  }
+  header {
+    background: #003366;
+    color: white;
+    padding: 10px 12px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 17px;
+    margin: 0 0 6px 0;
+  }
+  .meta-row {
+    display: flex;
+    gap: 6px;
+  }
+  .meta-row input {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px;
+    padding: 8px 8px;
+    border-radius: 5px;
+    border: none;
+  }
+  .progress {
+    height: 4px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #4fc3f7;
+    transition: width .3s;
+  }
+
+  main { padding: 8px 8px 30px; }
+
+  .section {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 10px;
+    cursor: pointer;
+  }
+  .section-head .left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+  .num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #003366;
+    color: white;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .num.done { background: #2e7d32; }
+  .chevron {
+    font-size: 12px;
+    color: #888;
+    transition: transform .2s;
+  }
+  .section.open .chevron { transform: rotate(90deg); }
+
+  .section-body {
+    display: none;
+    padding: 0 10px 10px;
+  }
+  .section.open .section-body { display: block; }
+
+  textarea {
+    width: 100%;
+    min-height: 64px;
+    font-size: 16px; /* verhindert Auto-Zoom bei Fokus auf iOS */
+    padding: 8px;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  textarea.flash {
+    animation: flashbg 1.1s ease;
+  }
+  @keyframes flashbg {
+    0% { background: #fff59d; }
+    100% { background: white; }
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .btn {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px 4px;
+    border-radius: 6px;
+    border: none;
+    background: #e8eef5;
+    color: #003366;
+    font-weight: 600;
+  }
+  .btn.correct { background: #003366; color: white; }
+  .btn.photo { background: #2e7d32; color: white; }
+  .btn:active { opacity: 0.75; }
+
+  .photo-status {
+    display: none;
+    font-size: 12px;
+    color: #555;
+    margin-top: 6px;
+    background: #f4f6f9;
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .photo-status.busy { color: #b06d00; }
+  .photo-status.ok { color: #2e7d32; }
+  .photo-status.err { color: #c62828; }
+
+  .status-toggle {
+    display: flex;
+    gap: 10px;
+    margin: 6px 0;
+  }
+  .status-toggle button {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccd5e0;
+    background: white;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .status-toggle button.active-yes { background: #2e7d32; color: white; border-color: #2e7d32; }
+  .status-toggle button.active-no { background: #c62828; color: white; border-color: #c62828; }
+
+  .hint {
+    font-size: 11px;
+    color: #888;
+    margin-top: 4px;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    padding: 10px;
+  }
+
+  .fab {
+    position: fixed;
+    bottom: 14px;
+    right: 14px;
+    background: #003366;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 46px; height: 46px;
+    font-size: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .print-trigger {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #4fc3f7;
+    color: #00293d;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .print-trigger:active { opacity: 0.8; }
+
+  .glossary-trigger {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 30px; height: 30px;
+    font-size: 15px;
+  }
+  header { position: sticky; }
+
+  /* Glossar-Panel */
+  .glossary-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 50;
+    align-items: flex-end;
+  }
+  .glossary-overlay.open { display: flex; }
+  .glossary-panel {
+    background: white;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 14px 14px 0 0;
+    padding: 14px 14px 20px;
+    overflow-y: auto;
+  }
+  .glossary-panel h2 {
+    font-size: 16px;
+    margin: 0 0 4px;
+    color: #003366;
+  }
+  .glossary-panel .sub {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 10px;
+  }
+  .glossary-add {
+    background: #f4f6f9;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+  .glossary-add label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #003366;
+    margin: 6px 0 2px;
+  }
+  .glossary-add input {
+    width: 100%;
+    font-size: 16px;
+    padding: 7px 8px;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+  }
+  .glossary-add button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    border: none;
+    border-radius: 6px;
+    background: #003366;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .glossary-list-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #003366;
+    margin: 10px 0 4px;
+  }
+  .glossary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 13.5px;
+  }
+  .glossary-item .txt { flex: 1; }
+  .glossary-item .txt small { display:block; color:#999; font-size: 11px; }
+  .glossary-item button {
+    background: #fdecea;
+    color: #c62828;
+    border: none;
+    border-radius: 5px;
+    width: 26px; height: 26px;
+    font-size: 14px;
+  }
+  .glossary-close {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 9px;
+    border: none;
+    border-radius: 6px;
+    background: #e8eef5;
+    color: #003366;
+    font-weight: 600;
+  }
+  .empty-hint { font-size: 12.5px; color: #999; padding: 6px 0; }
+
+  /* Diese Elemente sind nur beim Drucken sichtbar */
+  .print-box, .print-status, .print-meta {
+    display: none;
+  }
+
+  @media print {
+    body { background: white; }
+    header { background: white !important; color: #003366 !important; position: static; box-shadow: none; }
+    header h1 { color: #003366; }
+    .progress, .print-trigger, .meta-row, .fab, .btn-row, .hint, .chevron, textarea, .status-toggle, .photo-status, input[type="file"] {
+      display: none !important;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-size: 14px; }
-    .container { max-width: 480px; margin: 0 auto; padding-bottom: 20px; }
-    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 12px; color: #ffffff; }
-
-    .card { background: var(--card-bg); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
-    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid var(--accent-blue); display: flex; justify-content: space-between; }
-    .card-title.red { border-bottom-color: var(--accent-red); }
-    .card-title.green { border-bottom-color: var(--accent-green); }
-
-    label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 3px; }
-    input, select, textarea { width: 100%; padding: 10px; background: #111827; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
-    input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
-    textarea { resize: vertical; min-height: 50px; }
-
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .tab-container { display: flex; gap: 4px; margin-bottom: 12px; }
-    .tab-btn { flex: 1; padding: 10px 0; background: #1f2937; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; font-weight: bold; font-size: 0.85rem; cursor: pointer; text-align: center; }
-    .tab-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-    
-    .anlage-content { display: none; }
-    .anlage-content.active { display: block; }
-
-    .btn-submit { width: 100%; padding: 14px; background: var(--accent-blue); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    .btn-reset { width: 100%; padding: 10px; background: #374151; color: var(--text-muted); border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-top: 8px; }
-    .btn-archive { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
-
-    .sub-error { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 8px; }
-    .sub-error-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 4px; }
-
-    /* Bearbeitungs-Banner */
-    .edit-mode-banner {
-      display: none;
-      background: var(--accent-orange);
-      color: #000;
-      font-weight: bold;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      text-align: center;
-      font-size: 0.85rem;
-    }
-    .btn-cancel-edit {
-      background: #000;
-      color: #fff;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      margin-top: 6px;
-      cursor: pointer;
-    }
-
-    /* Modal / Archiv CSS */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
-    .modal-content { background: var(--card-bg); border-radius: 10px; width: 100%; max-width: 450px; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid var(--border-color); padding: 15px; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
-    .modal-title { font-size: 1.1rem; font-weight: bold; color: #fff; }
-    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
-    .archive-list { overflow-y: auto; flex: 1; margin-bottom: 10px; }
-    
-    /* Archiv List Items */
-    .archive-item {
-      background: #111827;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 10px 12px;
+    .section {
+      box-shadow: none;
+      border: 1px solid #ccc;
+      break-inside: avoid;
+      -webkit-column-break-inside: avoid;
       margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
     }
-    .archive-item:hover { border-color: var(--accent-blue); }
-    .archive-info { font-size: 0.85rem; flex: 1; }
-    .archive-date { font-weight: bold; color: var(--accent-blue); }
-    .archive-actions { display: flex; gap: 6px; align-items: center; }
-    
-    .btn-load { background: var(--accent-green); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
-    .btn-delete-item { background: #dc2626; color: #fff; border: none; padding: 6px 8px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .btn-delete-item:hover { background: #b91c1c; }
-
-    .confirm-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
-    .btn-modal-action { padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; text-align: center; }
-    .btn-modal-primary { background: var(--accent-blue); color: #fff; }
-    .btn-modal-secondary { background: #4b5563; color: #fff; }
-    .btn-modal-cancel { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
-
-    /* =========================================================
-       PDF DESIGN (A4 Querformat: 1123px x 794px)
-       ========================================================= */
-    #pdf-container {
-      position: absolute;
-      left: -9999px;
-      top: -9999px;
-      width: 1123px;
-      background: #ffffff;
-      color: #1f2937;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+    .section-body { display: block !important; padding-top: 4px; }
+    .print-meta {
+      display: block !important;
+      font-size: 12px;
+      color: #333;
+      margin: 4px 0 10px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 6px;
     }
-
-    .pdf-page {
-      width: 1123px;
-      height: 794px;
-      padding: 25px;
-      background: #ffffff;
-      box-sizing: border-box;
-      position: relative;
+    .print-status {
+      display: block !important;
+      font-weight: 700;
+      font-size: 12.5px;
+      margin-bottom: 4px;
     }
-
-    .pdf-header {
-      background: #1e293b;
-      color: #ffffff;
-      padding: 10px 18px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .print-box {
+      display: block !important;
+      white-space: pre-wrap;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: #222;
     }
-
-    .pdf-header h2 { font-size: 15pt; font-weight: bold; }
-    .pdf-header .badge { background: #3b82f6; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 10pt; font-weight: bold; }
-
-    .pdf-meta-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-    }
-
-    .pdf-meta-item label { font-size: 7pt; text-transform: uppercase; color: #64748b; font-weight: bold; display: block; }
-    .pdf-meta-item div { font-size: 9.5pt; font-weight: 600; color: #0f172a; }
-
-    .pdf-anlagen-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-
-    .pdf-anlage-card {
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background: #ffffff;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      font-size: 8pt;
-    }
-
-    .pdf-anlage-title {
-      background: #0f172a;
-      color: #ffffff;
-      font-weight: bold;
-      text-align: center;
-      padding: 5px;
-      font-size: 9.5pt;
-    }
-
-    .pdf-card-body { padding: 6px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-
-    .pdf-block {
-      background: #f8fafc;
-      border: 1px solid #f1f5f9;
-      padding: 5px;
-      border-radius: 4px;
-    }
-
-    .pdf-block-title {
-      font-size: 7pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      color: #475569;
-      margin-bottom: 2px;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 2px;
-    }
-
-    .pdf-block-title.red { color: #dc2626; border-bottom-color: #fca5a5; }
-    .pdf-block-title.green { color: #059669; border-bottom-color: #6ee7b7; }
-
-    .pdf-val { font-size: 8pt; color: #1e293b; white-space: pre-wrap; word-break: break-word; }
-
-    .pdf-footer {
-      position: absolute;
-      bottom: 12px;
-      left: 25px;
-      right: 25px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 5px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 7pt;
-      color: #94a3b8;
-    }
-  </style>
+    footer { display: none !important; }
+  }
+</style>
 </head>
 <body>
 
-<div class="container" id="main-form">
-  <h1>Schichtbuch Bandgalvanik</h1>
-
-  <button type="button" class="btn-archive" onclick="openArchiveModal()">
-    📁 Schichtbuch-Archiv
-  </button>
-
-  <div id="editBanner" class="edit-mode-banner">
-    ⚠️ Du bearbeitest einen bestehenden Archiv-Eintrag!<br>
-    <button type="button" class="btn-cancel-edit" onclick="cancelEditMode()">Bearbeitung abbrechen & neue Schicht starten</button>
+<header>
+  <h1>Morgenrunde – Protokoll</h1>
+  <button type="button" class="glossary-trigger" id="glossaryBtn" title="Fachbegriffe verwalten">📖</button>
+  <div class="meta-row">
+    <input type="date" id="datum">
   </div>
+  <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+  <button type="button" class="print-trigger" id="printBtn">🖨️ Übersichtliche PDF erzeugen / Drucken</button>
+  <div class="print-meta" id="printMeta"></div>
+</header>
 
-  <div class="card">
-    <div class="card-title">Schichtdaten</div>
-    <div class="grid-2">
-      <div>
-        <label for="datum">Datum</label>
-        <input type="date" id="datum">
-      </div>
-      <div>
-        <label for="schicht">Schicht</label>
-        <select id="schicht">
-          <option value="Frühschicht">Frühschicht</option>
-          <option value="Spätschicht">Spätschicht</option>
-          <option value="Nachtschicht">Nachtschicht</option>
-        </select>
-      </div>
+<main id="sections"></main>
+
+<footer>Zum Diktieren Mikrofon-Taste der iPhone-Tastatur nutzen · danach „Korrigieren" antippen</footer>
+
+<button class="fab" id="expandAllBtn" title="Alle auf/zu">⇅</button>
+
+<div class="glossary-overlay" id="glossaryOverlay">
+  <div class="glossary-panel">
+    <h2>📖 Fachbegriffe</h2>
+    <div class="sub">Begriffe, die beim Diktieren automatisch korrigiert werden. Eigene Begriffe könnt ihr unten ergänzen.</div>
+
+    <div class="glossary-add">
+      <label>Wird oft falsch verstanden als (optional)</label>
+      <input type="text" id="newWrong" placeholder="z. B. „Zinn Anode getrennt gesprochen“">
+      <label>Korrekter Fachbegriff</label>
+      <input type="text" id="newCorrect" placeholder="z. B. Zinnanode">
+      <button type="button" id="addTermBtn">+ Begriff hinzufügen</button>
     </div>
-    <label for="bediener">Schichtführer / Bediener</label>
-    <input type="text" id="bediener" placeholder="Name(n) eintragen">
-  </div>
 
-  <div class="tab-container">
-    <button class="tab-btn active" onclick="showAnlage('801', event)">A 801</button>
-    <button class="tab-btn" onclick="showAnlage('802', event)">A 802</button>
-    <button class="tab-btn" onclick="showAnlage('803', event)">A 803</button>
-    <button class="tab-btn" onclick="showAnlage('804', event)">A 804</button>
-  </div>
+    <div class="glossary-list-title">Eigene Begriffe</div>
+    <div id="customTermsList"></div>
 
-  <form id="schichtForm">
-    <script>
-      const anlagen = ['801', '802', '803', '804'];
-      const ursachenOptions = `
-        <option value="Kein Ausschuss">Kein Ausschuss</option>
-        <option value="Bandriss">Bandriss</option>
-        <option value="Beschichtungsfehler">Beschichtungsfehler</option>
-        <option value="Mechanischer Defekt">Mechanischer Defekt</option>
-        <option value="Werkzeug">Werkzeug</option>
-        <option value="QS- Prüfung">QS- Prüfung</option>
-        <option value="Verbogene Kontakte">Verbogene Kontakte</option>
-        <option value="Sonstige">Sonstige</option>
-        <option value="Wickelgüte">Wickelgüte</option>
-        <option value="Anlagenstillstand">Anlagenstillstand</option>
-        <option value="Einstellteile">Einstellteile</option>
-        <option value="Haftung">Haftung</option>
-        <option value="Unterbrechung">Unterbrechung</option>
-      `;
+    <div class="glossary-list-title">Vordefinierte Fachbegriffe (Galvanik)</div>
+    <div id="builtinTermsList"></div>
 
-      anlagen.forEach((a, index) => {
-        document.write(`
-          <div id="anlage-${a}" class="anlage-content ${index === 0 ? 'active' : ''}">
-            
-            <div class="card">
-              <div class="card-title green">Produktion & Artikel</div>
-              <label>Gut-Menge (m / Stk)</label>
-              <input type="text" id="gut_menge_${a}" placeholder="z. B. 5000">
-              
-              <div class="grid-2" style="margin-top:4px;">
-                <div>
-                  <label>Aktuelle Artikelnummer</label>
-                  <input type="text" id="art_akt_${a}" placeholder="Artikel-Nr.">
-                </div>
-                <div>
-                  <label>Folge-Artikelnummer</label>
-                  <input type="text" id="art_folge_${a}" placeholder="Nächste Artikel-Nr.">
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-title red">Ausschuss & Fehler - Anlage ${a}</div>
-              
-              <div class="grid-2">
-                <div>
-                  <label>Ausschuss (m / Stk)</label>
-                  <input type="text" id="ausschuss_menge_${a}_1" placeholder="0">
-                </div>
-                <div>
-                  <label>Hauptursache 1</label>
-                  <select id="ausschuss_grund_${a}_1">${ursachenOptions}</select>
-                </div>
-              </div>
-              <label>Details zu Fehler 1</label>
-              <textarea id="ausschuss_details_${a}_1" placeholder="Beschreibung Fehler 1"></textarea>
-
-              <div class="sub-error">
-                <div class="sub-error-title">+ Option: Fehler 2</div>
-                <div class="grid-2">
-                  <div>
-                    <label>Ausschuss 2 (m / Stk)</label>
-                    <input type="text" id="ausschuss_menge_${a}_2" placeholder="0">
-                  </div>
-                  <div>
-                    <label>Hauptursache 2</label>
-                    <select id="ausschuss_grund_${a}_2">${ursachenOptions}</select>
-                  </div>
-                </div>
-                <label>Details zu Fehler 2</label>
-                <textarea id="ausschuss_details_${a}_2" placeholder="Beschreibung Fehler 2"></textarea>
-              </div>
-
-              <div class="sub-error">
-                <div class="sub-error-title">+ Option: Fehler 3</div>
-                <div class="grid-2">
-                  <div>
-                    <label>Ausschuss 3 (m / Stk)</label>
-                    <input type="text" id="ausschuss_menge_${a}_3" placeholder="0">
-                  </div>
-                  <div>
-                    <label>Hauptursache 3</label>
-                    <select id="ausschuss_grund_${a}_3">${ursachenOptions}</select>
-                  </div>
-                </div>
-                <label>Details zu Fehler 3</label>
-                <textarea id="ausschuss_details_${a}_3" placeholder="Beschreibung Fehler 3"></textarea>
-              </div>
-
-            </div>
-
-            <div class="card">
-              <div class="card-title green">To-Do für Folgeschicht</div>
-              <textarea id="todo_${a}" placeholder="Was muss die nächste Schicht erledigen?"></textarea>
-            </div>
-
-            <div class="card">
-              <div class="card-title">Stationen & Besonderheiten</div>
-              <label>Auffälligkeiten an den Stationen</label>
-              <textarea id="stationen_${a}" placeholder="Abwickeln, Schweißen, Hot Wash, U-Clean..."></textarea>
-              <label>Defekte & technische Störungen</label>
-              <textarea id="defekte_${a}" placeholder="Was war defekt?"></textarea>
-              <label>Fehlendes Werkzeug / Materialien / KVP</label>
-              <textarea id="material_${a}" placeholder="Bestellungen, fehlende Teile, Verbesserungen"></textarea>
-            </div>
-
-          </div>
-        `);
-      });
-    </script>
-
-    <button type="button" id="submitBtn" class="btn-submit" onclick="generateShiftPDF()">
-      PDF Erstellen & Öffnen
-    </button>
-    <button type="button" class="btn-reset" onclick="openResetModal()">
-      Neues Protokoll starten / Zurückstellen
-    </button>
-  </form>
-</div>
-
-<!-- ARCHIV MODAL -->
-<div id="archiveModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title">Schichtbuch-Archiv</div>
-      <button class="modal-close" onclick="closeArchiveModal()">&times;</button>
-    </div>
-    <div class="archive-list" id="archiveList">
-      <!-- Dynamische Liste -->
-    </div>
+    <button type="button" class="glossary-close" id="glossaryCloseBtn">Schließen</button>
   </div>
 </div>
-
-<!-- RESET MODAL -->
-<div id="resetModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title">Formular zurückstellen</div>
-      <button class="modal-close" onclick="closeResetModal()">&times;</button>
-    </div>
-    <p style="font-size:0.9rem; color:var(--text-main); margin-bottom:10px;">
-      Möchtest du diese Schicht im Archiv speichern oder das Formular einfach leeren, ohne zu archivieren?
-    </p>
-    <div class="confirm-actions">
-      <button class="btn-modal-action btn-modal-primary" onclick="confirmReset(true)">
-        💾 Archivieren & Neues Protokoll starten
-      </button>
-      <button class="btn-modal-action btn-modal-secondary" onclick="confirmReset(false)">
-        🗑️ Nicht archivieren (Nur zurückstellen)
-      </button>
-      <button class="btn-modal-action btn-modal-cancel" onclick="closeResetModal()">
-        Abbrechen
-      </button>
-    </div>
-  </div>
-</div>
-
-<div id="pdf-container"></div>
 
 <script>
-  // Aktuell geladener Archiv-Eintrag (null = neues Protokoll)
-  let currentEditingArchiveId = null;
+// ---------------------------------------------------------
+// 1) INHALT DER ABSCHNITTE
+// ---------------------------------------------------------
+const sections = [
+  { title: "Arbeitssicherheit / Unfälle", placeholder: "Unfälle, Beinaheunfälle, Sicherheitsmaßnahmen..." },
+  { title: "Umweltthemen", placeholder: "Umweltvorkommnisse, Abfall, Emissionen..." },
+  { title: "Produktion Anlagen 801 / 802 / 803 / 804", placeholder: "Mengen, Status, Störungen je Anlage...", withPhoto: true },
+  { title: "Prozessparameter eingehalten?", placeholder: "Falls Abweichung: Anlage, Ursache, Maßnahme...", withStatus: true },
+  { title: "Folgeauftrag", placeholder: "Nächster Auftrag / Umrüstung..." },
+  { title: "Wochenthemen", placeholder: "Termine, besondere Themen der Woche..." },
+  { title: "Labor", placeholder: "Analysenergebnisse, offene Proben..." },
+  { title: "SES (Instandhaltung)", placeholder: "Offene Störungen, Reparaturen, Wartungen..." },
+  { title: "Allgemein", placeholder: "Sonstiges, das nicht in die anderen Punkte passt..." },
+];
 
-  // Initiales Datum
-  document.getElementById('datum').valueAsDate = new Date();
+// ---------------------------------------------------------
+// 2) FACHBEGRIFF-KORREKTUR
+//    a) feste Phrasen-Ersetzungen (häufige Diktier-Fehler)
+//    b) unscharfer Abgleich (Levenshtein) gegen Fachwortliste
+//    -> Liste unten einfach erweitern, wenn ihr weitere
+//       Begriffe/Anlagen/Abkürzungen ergänzen wollt.
+// ---------------------------------------------------------
+const phraseFixes = [
+  [/\banlage\s*acht\s*null\s*eins\b/gi, "Anlage 801"],
+  [/\banlage\s*acht\s*null\s*zwei\b/gi, "Anlage 802"],
+  [/\banlage\s*acht\s*null\s*drei\b/gi, "Anlage 803"],
+  [/\banlage\s*acht\s*null\s*vier\b/gi, "Anlage 804"],
+  [/\bacht\s*null\s*eins\b/gi, "801"],
+  [/\bacht\s*null\s*zwei\b/gi, "802"],
+  [/\bacht\s*null\s*drei\b/gi, "803"],
+  [/\bacht\s*null\s*vier\b/gi, "804"],
+  [/\bacht\s?hundert\s?eins\b/gi, "801"],
+  [/\bacht\s?hundert\s?zwei\b/gi, "802"],
+  [/\bacht\s?hundert\s?drei\b/gi, "803"],
+  [/\bacht\s?hundert\s?vier\b/gi, "804"],
+  [/\bes\s*es\b/gi, "SES"],
+  [/\bs\.?\s*e\.?\s*s\.?\b/gi, "SES"],
+  [/\bin\s?stand\s?haltung\b/gi, "Instandhaltung"],
+  [/\bprozess\s?parameter\b/gi, "Prozessparameter"],
+  [/\bfolge\s?auftrag\b/gi, "Folgeauftrag"],
+  [/\bwochen\s?themen\b/gi, "Wochenthemen"],
+  [/\barbeits\s?sicherheit\b/gi, "Arbeitssicherheit"],
+  [/\bumwelt\s?themen\b/gi, "Umweltthemen"],
+  [/\bbeinahe\s?unfall\b/gi, "Beinaheunfall"],
+  [/\bp\.?\s*s\.?\s*a\.?\b/gi, "PSA"],
+  [/\bgefahr\s?stoff\b/gi, "Gefahrstoff"],
+  [/\bgrenz\s?wert\b/gi, "Grenzwert"],
 
-  function showAnlage(anl, event) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.anlage-content').forEach(c => c.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById(`anlage-${anl}`).classList.add('active');
-  }
+  // --- Galvanik-Fachbegriffe (aus Equipment-Übersicht) ---
+  [/\btauch\s?tief\s?zelle\b/gi, "Tauchtiefzelle"],
+  [/\btauch\s?tief\b/gi, "Tauchtief"],
+  [/\bnickel\s?tauch\s?tief\s?zelle\b/gi, "Nickeltauchtiefzelle"],
+  [/\bedelmetall\s?tauch\s?tief\s?zelle\b/gi, "Edelmetall-Tauchtiefzelle"],
+  [/\bzinn\s?tauch\s?tief\s?zelle\b/gi, "Zinntauchtiefzelle"],
+  [/\btauch\s?tief\s?zellen\s?anode\b/gi, "Tauchtiefzellenanode"],
+  [/\banoden\s?säcke\b/gi, "Anodensäcke"],
+  [/\banoden\s?körbe\b/gi, "Anodenkörbe"],
+  [/\banoden\s?korb\b/gi, "Anodenkorb"],
+  [/\bnickel\s?anoden\b/gi, "Nickelanoden"],
+  [/\bzinn\s?anoden\b/gi, "Zinnanoden"],
+  [/\bzinn\s?anode\b/gi, "Zinnanode"],
+  [/\bzinn\s?korb\s?erhöhung\b/gi, "Zinnkorberhöhung"],
+  [/\bboden\s?leiste(n)?\b/gi, (m,p1)=> "Bodenleiste"+(p1?"n":"")],
+  [/\bboden\s?führung\b/gi, "Bodenführung"],
+  [/\bboden\s?rolle\b/gi, "Bodenrolle"],
+  [/\bnickel\s?top\s?shield\s?halter\b/gi, "NickelTopShieldhalter"],
+  [/\bnickel\s?top\s?shield\b/gi, "NickelTopShield"],
+  [/\bcenter\s?port\s?adapter\b/gi, "CenterPort Adapter"],
+  [/\bcenter\s?port\b/gi, "CenterPort"],
+  [/\bjet\s?base\b/gi, "Jet Base"],
+  [/\bjet\s?zelle\b/gi, "Jet Zelle"],
+  [/\btop\s?führung\b/gi, "Top Führung"],
+  [/\brollen\s?führung\s?jet\b/gi, "Rollenführung Jet"],
+  [/\bmylar\s?halterung\b/gi, "Mylarhalterung"],
+  [/\bstab\s?anoden\b/gi, "Stabanoden"],
+  [/\bspe\s?base\b/gi, "SPE Base"],
+  [/\bjoe\s?base\b/gi, "Joe Base"],
+  [/\bspot\s?punkt\b/gi, "Spot Punkt"],
+  [/\bstripe\s?streifen\b/gi, "Stripe Streifen"],
+  [/\bsilikon\s?einsatz\b/gi, "Silikoneinsatz"],
+  [/\bwheel\s?anode\b/gi, "Wheelanode"],
+  [/\bumlenk\s?rollen\b/gi, "Umlenkrollen"],
+  [/\bcross\s?flow\s?zelle\b/gi, "Crossflowzelle"],
+  [/\bcross\s?flow\b/gi, "Crossflow"],
+  [/\bein\s?auslauf\s?wehr\b/gi, "Ein-Auslaufwehr"],
+  [/\bbürsten\s?kontaktierung\b/gi, "Bürstenkontaktierung"],
+  [/\bbürsten\s?halter\b/gi, "Bürstenhalter"],
+  [/\bspe\s?vertikal\s?rollen\b/gi, "SPE-Vertikalrollen"],
+  [/\bvertikal\s?rolle(n)?\b/gi, (m,p1)=> "Vertikalrolle"+(p1?"n":"")],
+  [/\bspe\s?boden\s?rolle\b/gi, "SPE-Bodenrolle"],
+  [/\bte\s?vertikal\s?rolle\b/gi, "TE-Vertikalrolle"],
+  [/\bband\s?halter\b/gi, "Bandhalter"],
 
-  const formElement = id => document.getElementById(id);
+  // --- Chemie / Prozessschritte ---
+  [/\bzinn\s?aktivierung\b/gi, "Zinn-Aktivierung"],
+  [/\bnickel\s?aktivierung\b/gi, "Nickel-Aktivierung"],
+  [/\bgold\s?aktivierung\b/gi, "Gold-Aktivierung"],
+  [/\bpalladium\s?strike\b/gi, "Palladium-Strike"],
+  [/\bvor\s?behandlung\b/gi, "Vorbehandlung"],
+  [/\be\s?clean\b/gi, "E-Clean"],
+  [/\bu\s?clean\b/gi, "U-Clean"],
+  [/\bu\s?turm\b/gi, "U-Turm"],
+  [/\bhot\s?wash\b/gi, "Hotwash"],
+];
 
-  function getCurrentFormData() {
-    const data = {};
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(el => {
-      if (el.id) data[el.id] = el.value;
-    });
-    return data;
-  }
+// Fachwörter für unscharfen Abgleich (kanonische Schreibweise)
+const builtinGlossary = [
+  "Arbeitssicherheit","Unfälle","Beinaheunfall","Umweltthemen","Emission",
+  "Leckage","Gefahrstoff","Grenzwert","Prozessparameter","Sollwert","Istwert",
+  "Folgeauftrag","Umrüstung","Wochenthemen","Labor","Analysenwert","Charge",
+  "Freigabe","SES","Instandhaltung","Störung","Wartung","Kalibrierung",
+  "Havarie","Schicht","PSA","Anlage","801","802","803","804",
+  // --- Galvanik-Fachbegriffe ---
+  "Tauchtief","Tauchtiefzelle","Nickeltauchtiefzelle","Edelmetall-Tauchtiefzelle",
+  "Zinntauchtiefzelle","Tauchtiefzellenanode","Anodensäcke","Anodenkörbe",
+  "Anodenkorb","Nickelanoden","Zinnanoden","Zinnanode","Zinnkorberhöhung",
+  "Bodenleiste","Bodenleisten","Bodenführung","Bodenrolle",
+  "NickelTopShield","NickelTopShieldhalter","CenterPort","CenterPort Adapter",
+  "Jet","Jet Base","Jet Zelle","Top Führung","Rollenführung Jet",
+  "Mylar","Mylarhalterung","Stabanoden","Damm",
+  "SPE Base","Joe Base","Wheel","Spot Punkt","Stripe Streifen",
+  "Silikoneinsatz","Riemen","Wheelanode","Umlenkrollen",
+  "Crossflow","Crossflowzelle","Ein-Auslaufwehr","Exzenter","Wehr","Füße",
+  "Bürstenkontaktierung","Bürstenhalter","Kontaktierung","Führungen",
+  "SPE-Vertikalrollen","Vertikalrolle","Vertikalrollen","SPE-Bodenrolle",
+  "TE-Vertikalrolle","Bandhalter",
+  // --- Chemie / Prozessschritte ---
+  "Zinn","Zinn-Aktivierung","Nickel","Nickel-Aktivierung","Gold","Gold-Aktivierung",
+  "Palladium","Palladium-Strike","Vorbehandlung","E-Clean","U-Clean","U-Turm",
+  "Speicher","Hotwash","Stripper"
+];
 
-  function saveToLocalStorage() {
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(el => {
-      if (el.id) {
-        localStorage.setItem('schichtbuch_' + el.id, el.value);
-      }
-    });
-    if (currentEditingArchiveId) {
-      localStorage.setItem('schichtbuch_current_editing_id', currentEditingArchiveId);
-    } else {
-      localStorage.removeItem('schichtbuch_current_editing_id');
+// eigene, vom Nutzer ergänzte Begriffe (localStorage, mit Fallback)
+let customTerms = [];
+try {
+  customTerms = JSON.parse(localStorage.getItem("morgenrunde_custom_terms") || "[]");
+} catch (e) { customTerms = []; }
+
+function saveCustomTerms() {
+  try { localStorage.setItem("morgenrunde_custom_terms", JSON.stringify(customTerms)); }
+  catch (e) { /* Speicher evtl. nicht verfügbar - Begriffe gelten dann nur für diese Sitzung */ }
+}
+
+function buildCustomPhraseFixes() {
+  return customTerms
+    .filter(t => t.wrong && t.wrong.trim())
+    .map(t => [new RegExp("\\b" + t.wrong.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s?") + "\\b", "gi"), t.correct]);
+}
+
+function currentGlossary() {
+  return builtinGlossary.concat(customTerms.map(t => t.correct).filter(Boolean));
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({length: m+1}, () => new Array(n+1).fill(0));
+  for (let i=0;i<=m;i++) dp[i][0]=i;
+  for (let j=0;j<=n;j++) dp[0][j]=j;
+  for (let i=1;i<=m;i++){
+    for (let j=1;j<=n;j++){
+      const cost = a[i-1].toLowerCase() === b[j-1].toLowerCase() ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i-1][j] + 1,
+        dp[i][j-1] + 1,
+        dp[i-1][j-1] + cost
+      );
     }
   }
+  return dp[m][n];
+}
 
-  function loadFromLocalStorage() {
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(el => {
-      if (el.id) {
-        const val = localStorage.getItem('schichtbuch_' + el.id);
-        if (val !== null) el.value = val;
-      }
-    });
-    if (!localStorage.getItem('schichtbuch_datum')) {
-      document.getElementById('datum').valueAsDate = new Date();
-    }
-
-    const savedEditingId = localStorage.getItem('schichtbuch_current_editing_id');
-    if (savedEditingId) {
-      currentEditingArchiveId = parseInt(savedEditingId, 10);
-      updateEditBanner();
-    }
+function fuzzyFixWord(word) {
+  const stripped = word.replace(/[.,;:!?()]/g, "");
+  if (stripped.length < 4) return word; // zu kurze Wörter nicht anfassen
+  let best = null, bestDist = Infinity;
+  for (const term of currentGlossary()) {
+    if (Math.abs(term.length - stripped.length) > 3) continue;
+    const d = levenshtein(stripped.toLowerCase(), term.toLowerCase());
+    if (d < bestDist) { bestDist = d; best = term; }
   }
-
-  function updateEditBanner() {
-    const banner = document.getElementById('editBanner');
-    if (currentEditingArchiveId) {
-      banner.style.display = 'block';
-    } else {
-      banner.style.display = 'none';
-    }
+  const threshold = stripped.length <= 6 ? 1 : 2;
+  if (best && bestDist > 0 && bestDist <= threshold && best.toLowerCase() !== stripped.toLowerCase()) {
+    return word.replace(stripped, best);
   }
+  return word;
+}
 
-  function cancelEditMode() {
-    currentEditingArchiveId = null;
-    localStorage.removeItem('schichtbuch_current_editing_id');
-    updateEditBanner();
-    alert("Bearbeitungsmodus aufgehoben.");
-  }
+function correctText(text) {
+  let t = text;
+  buildCustomPhraseFixes().forEach(([regex, replacement]) => { t = t.replace(regex, replacement); });
+  phraseFixes.forEach(([regex, replacement]) => { t = t.replace(regex, replacement); });
+  t = t.split(/(\s+)/).map(tok => /\s+/.test(tok) ? tok : fuzzyFixWord(tok)).join("");
+  return t;
+}
 
-  // Hilfsfunktion zum Sortieren der Einträge (Datum absteigend -> ID/Zeit absteigend)
-  function sortArchiveEntries(archive) {
-    return archive.sort((a, b) => {
-      const dateA = a.datum || '';
-      const dateB = b.datum || '';
-      if (dateA !== dateB) {
-        return dateB.localeCompare(dateA); // Neuestes Datum oben
-      }
-      return (b.id || 0) - (a.id || 0); // Bei gleichem Datum neueste ID oben
-    });
-  }
+// ---------------------------------------------------------
+// 3) RENDERING
+// ---------------------------------------------------------
+const datumInput = document.getElementById("datum");
+if (!datumInput.value) {
+  const today = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  datumInput.value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+}
 
-  // ARCHIV LOGIK (Keine Speicherbegrenzung mehr)
-  function archiveCurrentState() {
-    let archive = [];
-    try {
-      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
-    } catch (e) { archive = []; }
+const container = document.getElementById("sections");
 
-    const currentData = getCurrentFormData();
-    
-    const datum = currentData.datum || new Date().toISOString().split('T')[0];
-    const schicht = currentData.schicht || 'Unbekannt';
-    const bediener = currentData.bediener || 'Kein Name';
-
-    // Wenn wir einen Eintrag bearbeiten, überschreiben wir ihn!
-    if (currentEditingArchiveId) {
-      const index = archive.findIndex(e => e.id === currentEditingArchiveId);
-      if (index !== -1) {
-        archive[index] = {
-          id: currentEditingArchiveId,
-          timestamp: new Date().toLocaleString('de-DE') + ' (Bearbeitet)',
-          datum: datum,
-          schicht: schicht,
-          bediener: bediener,
-          formData: currentData
-        };
-      } else {
-        currentEditingArchiveId = Date.now();
-        archive.push({
-          id: currentEditingArchiveId,
-          timestamp: new Date().toLocaleString('de-DE'),
-          datum: datum,
-          schicht: schicht,
-          bediener: bediener,
-          formData: currentData
-        });
-      }
-    } else {
-      const newId = Date.now();
-      const entry = {
-        id: newId,
-        timestamp: new Date().toLocaleString('de-DE'),
-        datum: datum,
-        schicht: schicht,
-        bediener: bediener,
-        formData: currentData
-      };
-      archive.push(entry);
-    }
-
-    // Nach Datum sortieren und ohne künstliche Begrenzung abspeichern
-    archive = sortArchiveEntries(archive);
-    localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
-  }
-
-  function deleteArchiveEntry(id, e) {
-    if (e) e.stopPropagation();
-
-    let archive = [];
-    try {
-      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
-    } catch (err) { archive = []; }
-
-    const entry = archive.find(item => item.id === id);
-    const label = entry ? `${entry.datum} (${entry.schicht})` : 'diesen Eintrag';
-
-    if (confirm(`Möchtest du ${label} wirklich dauerhaft aus dem Archiv löschen?`)) {
-      archive = archive.filter(item => item.id !== id);
-      localStorage.setItem('schichtbuch_archive', JSON.stringify(archive));
-
-      if (currentEditingArchiveId === id) {
-        cancelEditMode();
-      }
-
-      openArchiveModal();
-    }
-  }
-
-  function openArchiveModal() {
-    const modal = document.getElementById('archiveModal');
-    const list = document.getElementById('archiveList');
-    list.innerHTML = '';
-
-    let archive = [];
-    try {
-      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
-    } catch (e) { archive = []; }
-
-    archive = sortArchiveEntries(archive);
-
-    if (archive.length === 0) {
-      list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Keine archivierten Schichten vorhanden.</div>';
-    } else {
-      archive.forEach((item) => {
-        const el = document.createElement('div');
-        el.className = 'archive-item';
-        el.innerHTML = `
-          <div class="archive-info">
-            <div class="archive-date">${item.datum} - ${item.schicht}</div>
-            <div style="color:var(--text-muted); font-size:0.75rem;">Bediener: ${item.bediener}</div>
-            <div style="color:#6b7280; font-size:0.7rem;">Archiviert: ${item.timestamp}</div>
-          </div>
-          <div class="archive-actions">
-            <button class="btn-load" onclick="loadArchiveEntry(${item.id})">Laden & Bearbeiten</button>
-            <button class="btn-delete-item" title="Löschen" onclick="deleteArchiveEntry(${item.id}, event)">🗑️</button>
-          </div>
-        `;
-        list.appendChild(el);
-      });
-    }
-
-    modal.style.display = 'flex';
-  }
-
-  function closeArchiveModal() {
-    document.getElementById('archiveModal').style.display = 'none';
-  }
-
-  function openResetModal() {
-    document.getElementById('resetModal').style.display = 'flex';
-  }
-
-  function closeResetModal() {
-    document.getElementById('resetModal').style.display = 'none';
-  }
-
-  function confirmReset(shouldArchive) {
-    closeResetModal();
-
-    if (shouldArchive) {
-      archiveCurrentState();
-    }
-
-    const savedArtAkt = {};
-    const savedArtFolge = {};
-
-    ['801', '802', '803', '804'].forEach(a => {
-      savedArtAkt[a] = formElement(`art_akt_${a}`).value;
-      savedArtFolge[a] = formElement(`art_folge_${a}`).value;
-    });
-
-    // Bearbeitungsmodus zurücksetzen für die neue Schicht
-    currentEditingArchiveId = null;
-
-    // Formular-LocalStorage löschen (Archiv behalten)
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('schichtbuch_') && key !== 'schichtbuch_archive') {
-        localStorage.removeItem(key);
-      }
-    });
-
-    // Formular zurücksetzen
-    document.getElementById('schichtForm').reset();
-    document.getElementById('datum').valueAsDate = new Date();
-
-    // Artikelnummern wieder einfügen
-    ['801', '802', '803', '804'].forEach(a => {
-      formElement(`art_akt_${a}`).value = savedArtAkt[a] || '';
-      formElement(`art_folge_${a}`).value = savedArtFolge[a] || '';
-    });
-
-    saveToLocalStorage();
-    updateEditBanner();
-
-    if (shouldArchive) {
-      alert("Schicht wurde archiviert und das Formular für die nächste Schicht zurückgestellt!");
-    } else {
-      alert("Formular wurde zurückgestellt (ohne zu archivieren).");
-    }
-  }
-
-  function loadArchiveEntry(id) {
-    let archive = [];
-    try {
-      archive = JSON.parse(localStorage.getItem('schichtbuch_archive')) || [];
-    } catch (e) { archive = []; }
-
-    const entry = archive.find(e => e.id === id);
-    if (entry && entry.formData) {
-      if (confirm(`Möchtest du die Schicht vom ${entry.datum} (${entry.schicht}) laden? Alle Änderungen überschreiben diesen Eintrag im Archiv.`)) {
-        Object.keys(entry.formData).forEach(key => {
-          const field = document.getElementById(key);
-          if (field) {
-            field.value = entry.formData[key];
-          }
-        });
-        
-        currentEditingArchiveId = id;
-        saveToLocalStorage();
-        updateEditBanner();
-        closeArchiveModal();
-        alert("Eintrag geladen. Wenn du nun Änderungen vornimmst und archivierst/zurückstellst, wird dieser Eintrag aktualisiert.");
-      }
-    }
-  }
-
-  // Event Listener für Auto-Save anhängen
-  document.addEventListener('DOMContentLoaded', () => {
-    loadFromLocalStorage();
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-      el.addEventListener('input', () => {
-        saveToLocalStorage();
-        if (currentEditingArchiveId) archiveCurrentState();
-      });
-      el.addEventListener('change', () => {
-        saveToLocalStorage();
-        if (currentEditingArchiveId) archiveCurrentState();
-      });
-    });
-  });
-
-  async function generateShiftPDF() {
-    const btn = document.getElementById('submitBtn');
-    btn.innerText = "Erstelle Schichtblatt...";
-    btn.style.opacity = "0.5";
-
-    // Beim Generieren des PDFs auch sicherstellen, dass Änderungen im Archiv gesichert sind
-    archiveCurrentState();
-
-    const datumVal = formElement('datum').value || '-';
-    const schichtVal = formElement('schicht').value;
-    const bedienerVal = formElement('bediener').value || '-';
-
-    const pdfContainer = document.getElementById('pdf-container');
-    pdfContainer.innerHTML = '';
-
-    let anlagenHTML = '';
-    ['801', '802', '803', '804'].forEach(a => {
-      const gutMenge = formElement(`gut_menge_${a}`).value || '0';
-      const artAkt = formElement(`art_akt_${a}`).value || '-';
-      const artFolge = formElement(`art_folge_${a}`).value || '-';
-      const todo = formElement(`todo_${a}`).value || '-';
-      const stat = formElement(`stationen_${a}`).value || '-';
-      const def = formElement(`defekte_${a}`).value || '-';
-      const mat = formElement(`material_${a}`).value || '-';
-
-      // Fehler 1 - 3 zusammenbauen
-      let ausschussBlockHTML = '';
-      for (let i = 1; i <= 3; i++) {
-        const menge = formElement(`ausschuss_menge_${a}_${i}`).value || '0';
-        const grund = formElement(`ausschuss_grund_${a}_${i}`).value;
-        const det = formElement(`ausschuss_details_${a}_${i}`).value;
-
-        if ((menge !== '0' && menge !== '') || grund !== 'Kein Ausschuss' || det !== '') {
-          ausschussBlockHTML += `
-            <div style="margin-bottom: 3px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px;">
-              <b>Menge:</b> <span style="color:#dc2626; font-weight:bold;">${menge}</span> | <b>Ursache:</b> ${grund}
-              ${det ? `<br><i>${det}</i>` : ''}
-            </div>
-          `;
-        }
-      }
-
-      if (!ausschussBlockHTML) {
-        ausschussBlockHTML = '<div class="pdf-val">Kein Ausschuss</div>';
-      }
-
-      anlagenHTML += `
-        <div class="pdf-anlage-card">
-          <div class="pdf-anlage-title">ANLAGE ${a}</div>
-          <div class="pdf-card-body">
-            
-            <div class="pdf-block">
-              <div class="pdf-block-title green">Produktion</div>
-              <div class="pdf-val"><b>Gut-Menge:</b> ${gutMenge}</div>
-              <div class="pdf-val"><b>Artikel-Nr:</b> ${artAkt}</div>
-              <div class="pdf-val"><b>Folge-Art.:</b> ${artFolge}</div>
-            </div>
-
-            <div class="pdf-block">
-              <div class="pdf-block-title red">Ausschuss & Ursachen</div>
-              ${ausschussBlockHTML}
-            </div>
-
-            <div class="pdf-block">
-              <div class="pdf-block-title green">To-Do Folgeschicht</div>
-              <div class="pdf-val">${todo}</div>
-            </div>
-
-            <div class="pdf-block" style="flex: 1;">
-              <div class="pdf-block-title">Stationen & Störungen</div>
-              <div class="pdf-val"><b>Stationen:</b> ${stat}</div>
-              <div class="pdf-val"><b>Defekte:</b> ${def}</div>
-              <div class="pdf-val"><b>Material/KVP:</b> ${mat}</div>
-            </div>
-
-          </div>
-        </div>
-      `;
-    });
-
-    pdfContainer.innerHTML = `
-      <div class="pdf-page" id="pdf-shift-page">
-        <div class="pdf-header">
-          <div>
-            finalize Shift Logging
-            <h2>SCHICHTBUCH PROTOKOLL</h2>
-            <div style="font-size: 8.5pt; opacity: 0.8;">Bandgalvanik Gesamtbericht</div>
-          </div>
-          <div class="badge">${schichtVal.toUpperCase()}</div>
-        </div>
-
-        <div class="pdf-meta-grid">
-          <div class="pdf-meta-item">
-            <label>Datum</label>
-            <div>${datumVal}</div>
-          </div>
-          <div class="pdf-meta-item">
-            <label>Schicht</label>
-            <div>${schichtVal}</div>
-          </div>
-          <div class="pdf-meta-item">
-            <label>Schichtführer / Bediener</label>
-            <div>${bedienerVal}</div>
-          </div>
-        </div>
-
-        <div class="pdf-anlagen-grid">
-          ${anlagenHTML}
-        </div>
-
-        <div class="pdf-footer">
-          <span>Schichtbuch Protokoll - Bandgalvanik</span>
-          <span>1 Blatt pro Schicht</span>
-        </div>
+sections.forEach((s, i) => {
+  const div = document.createElement("div");
+  div.className = "section" + (i === 0 ? " open" : "");
+  div.innerHTML = `
+    <div class="section-head" data-idx="${i}">
+      <div class="left">
+        <div class="num" id="num-${i}">${i+1}</div>
+        <span>${s.title}</span>
       </div>
-    `;
+      <span class="chevron">▶</span>
+    </div>
+    <div class="section-body">
+      ${s.withStatus ? `
+      <div class="status-toggle">
+        <button type="button" data-status="ja" data-idx="${i}">Ja</button>
+        <button type="button" data-status="nein" data-idx="${i}">Nein</button>
+      </div>
+      <div class="print-status" id="pstatus-${i}"></div>` : ``}
+      <textarea id="ta-${i}" placeholder="${s.placeholder}"></textarea>
+      <div class="print-box" id="pbox-${i}"></div>
+      <div class="btn-row">
+        <button type="button" class="btn correct" data-idx="${i}">✓ Korrigieren</button>
+        ${s.withPhoto ? `<button type="button" class="btn photo" data-photo="${i}">📷 Foto → Text</button>` : ``}
+        <button type="button" class="btn" data-clear="${i}">Leeren</button>
+      </div>
+      ${s.withPhoto ? `
+      <input type="file" accept="image/*" multiple id="photo-${i}" style="display:none">
+      <div class="photo-status" id="photostatus-${i}"></div>` : ``}
+      <div class="hint">${s.withPhoto ? `Tipp: Mikro auf der Tastatur zum Diktieren nutzen, danach „Korrigieren" antippen. Foto → Text: Kamera oder Fotos-App wählen, mehrere Bilder (z. B. je Anlage) möglich.` : `Tipp: Mikro auf der Tastatur zum Diktieren nutzen, danach „Korrigieren" antippen.`}</div>
+    </div>
+  `;
+  container.appendChild(div);
+});
 
-    // Canvas & PDF Rendern (A4 Querformat)
-    const pageEl = document.getElementById('pdf-shift-page');
-    const canvas = await html2canvas(pageEl, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('landscape', 'pt', 'a4');
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-
-    const pdfBlob = pdf.output('blob');
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-
-    btn.innerText = "PDF Erstellen & Öffnen";
-    btn.style.opacity = "1";
-
-    window.location.href = pdfUrl;
+// Auf-/Zuklappen
+container.addEventListener("click", (e) => {
+  const head = e.target.closest(".section-head");
+  if (head) {
+    head.closest(".section").classList.toggle("open");
+    return;
   }
+  const correctBtn = e.target.closest(".btn.correct");
+  if (correctBtn) {
+    const idx = correctBtn.dataset.idx;
+    const ta = document.getElementById("ta-" + idx);
+    ta.value = correctText(ta.value);
+    ta.classList.remove("flash");
+    void ta.offsetWidth; // reflow, damit Animation neu startet
+    ta.classList.add("flash");
+    updateProgress();
+    return;
+  }
+  const photoBtn = e.target.closest(".btn.photo");
+  if (photoBtn) {
+    document.getElementById("photo-" + photoBtn.dataset.photo).click();
+    return;
+  }
+  const clearBtn = e.target.closest("[data-clear]");
+  if (clearBtn) {
+    const idx = clearBtn.dataset.clear;
+    const title = sections[idx].title;
+    if (confirm(`Wollen Sie „${title}" wirklich zurücksetzen?`)) {
+      document.getElementById("ta-" + idx).value = "";
+      const statusEl = document.getElementById("photostatus-" + idx);
+      if (statusEl) { statusEl.textContent = ""; statusEl.style.display = "none"; }
+      const group = document.querySelector(`.status-toggle button[data-idx="${idx}"]`)?.parentElement;
+      if (group) group.querySelectorAll("button").forEach(b => b.classList.remove("active-yes","active-no"));
+      updateProgress();
+    }
+    return;
+  }
+  const statusBtn = e.target.closest(".status-toggle button");
+  if (statusBtn) {
+    const idx = statusBtn.dataset.idx;
+    const group = statusBtn.parentElement.querySelectorAll("button");
+    group.forEach(b => b.classList.remove("active-yes","active-no"));
+    if (statusBtn.dataset.status === "ja") statusBtn.classList.add("active-yes");
+    else statusBtn.classList.add("active-no");
+    updateProgress();
+    return;
+  }
+});
+
+// Fortschrittsanzeige = wie viele Abschnitte befüllt sind
+function updateProgress() {
+  let filled = 0;
+  sections.forEach((s, i) => {
+    const ta = document.getElementById("ta-" + i);
+    const hasStatus = document.querySelector(`.status-toggle button.active-yes[data-idx="${i}"], .status-toggle button.active-no[data-idx="${i}"]`);
+    const isFilled = ta.value.trim().length > 0 || hasStatus;
+    document.getElementById("num-" + i).classList.toggle("done", isFilled);
+    if (isFilled) filled++;
+  });
+  const pct = Math.round((filled / sections.length) * 100);
+  document.getElementById("progressFill").style.width = pct + "%";
+}
+container.addEventListener("input", (e) => {
+  if (e.target.tagName === "TEXTAREA") updateProgress();
+});
+
+// ---------------------------------------------------------
+// FOTO → TEXT (OCR)
+//    Kamera direkt öffnen, Text/Zahlen im Bild erkennen
+//    (z. B. Zählerstände, Anzeigen) und in das Feld einfügen.
+//    Nutzt Tesseract.js, wird erst bei Bedarf nachgeladen
+//    (benötigt dafür einmalig Internetverbindung).
+// ---------------------------------------------------------
+let tesseractLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (tesseractLoading) return tesseractLoading;
+  tesseractLoading = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = () => resolve(window.Tesseract);
+    s.onerror = () => reject(new Error("Konnte Texterkennung nicht laden (Internet nötig)"));
+    document.head.appendChild(s);
+  });
+  return tesseractLoading;
+}
+
+function setPhotoStatus(idx, text, cls) {
+  const el = document.getElementById("photostatus-" + idx);
+  el.textContent = text;
+  el.className = "photo-status" + (cls ? " " + cls : "");
+  el.style.display = text ? "block" : "none";
+}
+
+// ---------------------------------------------------------
+// Erkennt strukturierte Produktionsdaten aus MES-Screens
+// (z. B. TE-Anlagenübersicht): Gruppe (= Anlage/Linie),
+// Artikel, Mengen Soll / Gutmenge / Ausschuss.
+// Bei Treffer wird daraus eine kompakte Zeile gebaut,
+// statt den rohen, unübersichtlichen OCR-Text einzufügen.
+// ---------------------------------------------------------
+function parseProductionData(rawText) {
+  const t = rawText.replace(/\r/g, "");
+  const d = {};
+
+  // Gruppe = Anlage. Bevorzugt nach den bekannten Anlagen-Nummern
+  // 801-804 suchen (robuster als Positions-Regex bei mehrspaltigem
+  // OCR-Text, wo "Gruppe" und ihr Wert nicht direkt nebeneinander stehen).
+  let m = t.match(/\b(80[1-4])\b/);
+  if (m) {
+    d.gruppe = m[1];
+  } else {
+    m = t.match(/Gruppe[^\d]{0,20}(\d{2,4})/i);
+    if (m) d.gruppe = m[1];
+  }
+
+  m = t.match(/Artikel[^\n]*\n?\s*([A-Za-z0-9\-.]{3,20})/i);
+  if (m) d.artikel = m[1].trim();
+
+  // "Mengen (Soll / Gut / Ausschuss)" mit drei Zahlen
+  m = t.match(/Mengen[\s\S]{0,60}?([\d.,]{2,12})\s*\/\s*([\d.,]{2,12})\s*\/\s*([\d.,]{2,12})/i);
+  if (m) {
+    d.soll = m[1]; d.gut = m[2]; d.ausschuss = m[3];
+  } else {
+    // Fallback: einzelne beschriftete Felder oben im Screen
+    const gm = t.match(/Gutmenge[^\d]{0,10}([\d.,]{2,12})/i);
+    const am = t.match(/Ausschuss[^\d]{0,10}([\d.,]{2,12})/i);
+    if (gm) d.gut = gm[1];
+    if (am) d.ausschuss = am[1];
+  }
+
+  return d;
+}
+
+function formatProductionData(d) {
+  const parts = [];
+  if (d.gruppe) parts.push(`Anlage ${d.gruppe}`);
+  if (d.artikel) parts.push(`Artikel ${d.artikel}`);
+  const mengen = [];
+  if (d.soll) mengen.push(`Soll ${d.soll}`);
+  if (d.gut) mengen.push(`Gut ${d.gut}`);
+  if (d.ausschuss) mengen.push(`Ausschuss ${d.ausschuss}`);
+  if (mengen.length) parts.push(mengen.join(" / "));
+  return parts.join(": ");
+}
+
+async function handlePhotos(idx, fileList) {
+  const files = Array.from(fileList);
+  const ta = document.getElementById("ta-" + idx);
+  let okCount = 0;
+
+  for (let n = 0; n < files.length; n++) {
+    setPhotoStatus(idx, `⏳ Bild ${n + 1}/${files.length} wird erkannt …`, "busy");
+    try {
+      const Tesseract = await loadTesseract();
+      const { data: { text } } = await Tesseract.recognize(files[n], "deu");
+      const structured = formatProductionData(parseProductionData(text));
+      const finalText = structured || correctText(text.trim());
+      if (finalText) {
+        ta.value = ta.value.trim() ? ta.value.trim() + "\n" + finalText : finalText;
+        okCount++;
+      }
+    } catch (err) {
+      setPhotoStatus(idx, "⚠️ " + err.message, "err");
+      return;
+    }
+  }
+
+  ta.classList.remove("flash");
+  void ta.offsetWidth;
+  ta.classList.add("flash");
+  updateProgress();
+
+  if (okCount === 0) {
+    setPhotoStatus(idx, "⚠️ Kein Text erkannt. Bitte näher/schärfer fotografieren.", "err");
+  } else {
+    setPhotoStatus(idx, `✓ ${okCount} von ${files.length} Foto(s) verarbeitet – bitte kurz prüfen. Für weitere Anlagen einfach nochmal „Foto → Text" antippen.`, "ok");
+  }
+}
+
+container.addEventListener("change", (e) => {
+  const input = e.target;
+  if (input.tagName === "INPUT" && input.type === "file" && input.id.startsWith("photo-")) {
+    const idx = input.id.replace("photo-", "");
+    if (input.files && input.files.length) handlePhotos(idx, input.files);
+    input.value = ""; // erlaubt erneute Auswahl der gleichen Datei(en)
+  }
+});
+
+document.getElementById("expandAllBtn").addEventListener("click", () => {
+  const secs = document.querySelectorAll(".section");
+  const anyClosed = [...secs].some(s => !s.classList.contains("open"));
+  secs.forEach(s => s.classList.toggle("open", anyClosed));
+});
+
+updateProgress();
+
+// ---------------------------------------------------------
+// 4) DRUCKANSICHT VORBEREITEN
+//    Überträgt aktuelle Eingaben in eine saubere,
+//    reine Textdarstellung (für PDF/Ausdruck).
+// ---------------------------------------------------------
+function preparePrintView() {
+  // Kopf: Datum
+  const rawDatum = document.getElementById("datum").value;
+  let datum = "—";
+  if (rawDatum) {
+    const [y, m, d] = rawDatum.split("-");
+    datum = `${d}.${m}.${y}`;
+  }
+  document.getElementById("printMeta").textContent = `Datum: ${datum}`;
+
+  sections.forEach((s, i) => {
+    // Textinhalt
+    const ta = document.getElementById("ta-" + i);
+    const box = document.getElementById("pbox-" + i);
+    box.textContent = ta.value.trim() || "— keine Angabe —";
+
+    // Status Ja/Nein (nur bei Prozessparameter-Abschnitt)
+    if (s.withStatus) {
+      const activeYes = document.querySelector(`.status-toggle button.active-yes[data-idx="${i}"]`);
+      const activeNo = document.querySelector(`.status-toggle button.active-no[data-idx="${i}"]`);
+      const pstatus = document.getElementById("pstatus-" + i);
+      if (activeYes) pstatus.textContent = "Status: Ja";
+      else if (activeNo) pstatus.textContent = "Status: Nein";
+      else pstatus.textContent = "Status: —";
+    }
+  });
+}
+
+document.getElementById("printBtn").addEventListener("click", () => {
+  preparePrintView();
+  window.print();
+});
+
+// ---------------------------------------------------------
+// 5) GLOSSAR-PANEL (Fachbegriffe ansehen & ergänzen)
+// ---------------------------------------------------------
+const glossaryOverlay = document.getElementById("glossaryOverlay");
+const customTermsList = document.getElementById("customTermsList");
+const builtinTermsList = document.getElementById("builtinTermsList");
+
+function renderGlossaryLists() {
+  // Eigene Begriffe
+  if (customTerms.length === 0) {
+    customTermsList.innerHTML = `<div class="empty-hint">Noch keine eigenen Begriffe hinzugefügt.</div>`;
+  } else {
+    customTermsList.innerHTML = customTerms.map((t, i) => `
+      <div class="glossary-item">
+        <div class="txt">${t.correct}${t.wrong ? `<small>statt „${t.wrong}“</small>` : ``}</div>
+        <button type="button" data-del="${i}">✕</button>
+      </div>
+    `).join("");
+  }
+  // Vordefinierte Begriffe (nur Anzeige)
+  builtinTermsList.innerHTML = builtinGlossary
+    .filter((v, i, arr) => arr.indexOf(v) === i)
+    .sort((a,b) => a.localeCompare(b, "de"))
+    .map(t => `<div class="glossary-item"><div class="txt">${t}</div></div>`)
+    .join("");
+}
+
+document.getElementById("glossaryBtn").addEventListener("click", () => {
+  renderGlossaryLists();
+  glossaryOverlay.classList.add("open");
+});
+document.getElementById("glossaryCloseBtn").addEventListener("click", () => {
+  glossaryOverlay.classList.remove("open");
+});
+glossaryOverlay.addEventListener("click", (e) => {
+  if (e.target === glossaryOverlay) glossaryOverlay.classList.remove("open");
+});
+
+document.getElementById("addTermBtn").addEventListener("click", () => {
+  const wrongEl = document.getElementById("newWrong");
+  const correctEl = document.getElementById("newCorrect");
+  const correct = correctEl.value.trim();
+  const wrong = wrongEl.value.trim();
+  if (!correct) { correctEl.focus(); return; }
+  customTerms.push({ wrong, correct });
+  saveCustomTerms();
+  wrongEl.value = "";
+  correctEl.value = "";
+  renderGlossaryLists();
+});
+
+customTermsList.addEventListener("click", (e) => {
+  const delBtn = e.target.closest("[data-del]");
+  if (!delBtn) return;
+  const idx = parseInt(delBtn.dataset.del, 10);
+  customTerms.splice(idx, 1);
+  saveCustomTerms();
+  renderGlossaryLists();
+});
 </script>
 
 </body>
 </html>
-
