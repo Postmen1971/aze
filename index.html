@@ -130,9 +130,26 @@
     font-weight: 600;
   }
   .btn.correct { background: #003366; color: white; }
-  .btn.photo { background: #2e7d32; color: white; }
   .btn.paste { background: #6a3fb5; color: white; }
+  .btn.ai-prompt {
+    width: 100%;
+    margin-top: 6px;
+    background: #eef3f9;
+    color: #003366;
+    border: 1px dashed #6a3fb5;
+  }
   .btn:active { opacity: 0.75; }
+  .ki-paste-box { margin-top: 8px; }
+  .ki-paste-box textarea {
+    width: 100%;
+    font-size: 14px;
+    padding: 7px 8px;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  .ki-paste-box .btn { width: 100%; margin-top: 5px; }
 
   .photo-status {
     display: none;
@@ -422,7 +439,7 @@
     body { background: white; }
     header { background: white !important; color: #003366 !important; position: static; box-shadow: none; }
     header h1 { color: #003366; }
-    .print-trigger, .meta-row, .fab, .btn-row, .hint, .chevron, textarea, .status-toggle, .photo-status, input[type="file"], .anlagen-grid, .notes-label, .af-clear-nums, .kontakte-info, .af-calc-btn, .calc-panel {
+    .print-trigger, .meta-row, .fab, .btn-row, .hint, .chevron, textarea, .status-toggle, .photo-status, input[type="file"], .anlagen-grid, .notes-label, .af-clear-nums, .kontakte-info, .af-calc-btn, .calc-panel, .ai-prompt, .ki-paste-box {
       display: none !important;
     }
     .progress { display: none !important; }
@@ -512,6 +529,8 @@
       <input type="text" inputmode="numeric" id="newArtikelNr" placeholder="z. B. 524399">
       <label>Kontakte pro Meter</label>
       <input type="text" inputmode="numeric" id="newArtikelKontakte" placeholder="z. B. 500">
+      <label>Gesamtstückzahl pro Spule (Standard, optional)</label>
+      <input type="text" inputmode="numeric" id="newArtikelStueckzahl" placeholder="z. B. 250000">
       <button type="button" id="addArtikelBtn">+ Artikel hinzufügen</button>
     </div>
 
@@ -519,6 +538,15 @@
     <div id="artikelDbList"></div>
 
     <button type="button" class="glossary-close" id="artikelDbCloseBtn">Schließen</button>
+  </div>
+</div>
+
+<div class="glossary-overlay" id="promptOverlay">
+  <div class="glossary-panel">
+    <h2>🤖 KI-Prompt</h2>
+    <div class="sub">Text ist markiert – direkt kopieren (oben rechts erscheint eine „Kopieren"-Blase) und in ChatGPT/Gemini einfügen.</div>
+    <textarea id="promptDisplay" rows="10" readonly style="width:100%; font-size:13px; padding:8px; border:1px solid #ccd5e0; border-radius:6px; box-sizing:border-box;"></textarea>
+    <button type="button" class="glossary-close" id="promptCloseBtn">Schließen</button>
   </div>
 </div>
 
@@ -684,6 +712,103 @@ function findKontakte(artikelValue) {
   return entry ? entry.kontakte : null;
 }
 
+function findStueckzahl(artikelValue) {
+  const entry = artikelDB.find(e => e.artikel.toLowerCase() === artikelValue.toLowerCase());
+  return entry && entry.stueckzahl ? entry.stueckzahl : null;
+}
+
+// ---------------------------------------------------------
+// Liest aus einem (KI- oder OCR-)Text Anlage/Gruppe, Artikel
+// und die Mengen Soll/Gut/Ausschuss zeilenbasiert heraus.
+// ---------------------------------------------------------
+function parseProductionData(rawText) {
+  const lines = rawText.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(Boolean);
+  const d = {};
+
+  // Anlage = "Gruppe". Bevorzugt bekannte Anlagen-Nummern 801-804 suchen.
+  let m = rawText.match(/\b(80[1-4])\b/);
+  if (m) d.gruppe = m[1];
+
+  // --- Artikel ---
+  const artikelClean = s => s.trim().replace(/^[:\s-]+/, "").replace(/[.,;:]+$/, "");
+  for (let i = 0; i < lines.length; i++) {
+    if (/artikel/i.test(lines[i])) {
+      let mm = lines[i].match(/artikel[^A-Za-z0-9]{0,5}([A-Za-z0-9][A-Za-z0-9\-.]{2,19})/i);
+      if (mm) { d.artikel = artikelClean(mm[1]); break; }
+      for (let j = 1; j <= 2 && i + j < lines.length; j++) {
+        const cand = lines[i + j];
+        if (!cand || /^(mengen|status|gruppe|kurzbezeichnung|arbeitsplatz)/i.test(cand)) continue;
+        const mm2 = cand.match(/([A-Za-z0-9]{3,10}[-.]?[A-Za-z0-9]{0,4})/);
+        if (mm2) { d.artikel = artikelClean(mm2[1]); break; }
+      }
+      if (d.artikel) break;
+    }
+  }
+
+  // --- Mengen (Soll / Gut / Ausschuss) ---
+  const numRe = /\d{1,3}(?:\.\d{3})*(?:,\d+)?/g;
+  for (let i = 0; i < lines.length; i++) {
+    const isLabelLine = /mengen/i.test(lines[i]) ||
+      (/soll/i.test(lines[i]) && /ausschuss/i.test(lines[i])) ||
+      (/soll/i.test(lines[i]) && /gut/i.test(lines[i]));
+    if (isLabelLine) {
+      const combined = lines.slice(i, i + 4).join(" ");
+      let nums = (combined.match(numRe) || []).filter(n => n.replace(/[.,]/g, "").length >= 2);
+      if (nums.length >= 3) {
+        d.soll = nums[0]; d.gut = nums[1]; d.ausschuss = nums[2];
+        break;
+      }
+    }
+  }
+
+  // Fallback: einzelne beschriftete Felder (Gutmenge / Ausschuss separat)
+  if (!d.gut) {
+    const gm = rawText.match(/Gutmenge[^\d]{0,10}([\d.,]{2,12})/i);
+    if (gm) d.gut = gm[1];
+  }
+  if (!d.ausschuss) {
+    const am = rawText.match(/Ausschuss[^\d]{0,10}([\d.,]{2,12})/i);
+    if (am) d.ausschuss = am[1];
+  }
+
+  return d;
+}
+
+// Trägt erkannte Werte in die passende Anlagen-Karte (801-804) ein.
+function fillAnlageCard(d) {
+  if (!d.gruppe || !ANLAGEN.includes(d.gruppe)) return false;
+  const set = (field, val) => {
+    if (!val) return;
+    const el = document.querySelector(`.af[data-anlage="${d.gruppe}"][data-field="${field}"]`);
+    if (el) el.value = val;
+  };
+  set("artikel", d.artikel);
+  set("soll", d.soll);
+  set("gut", d.gut);
+  set("ausschuss", d.ausschuss);
+
+  if (d.artikel) {
+    const info = document.getElementById("kontakte-info-" + d.gruppe);
+    const kontakte = findKontakte(d.artikel);
+    if (info) {
+      if (kontakte) { info.textContent = `→ ${kontakte} Kontakte/m`; info.className = "kontakte-info"; }
+      else { info.textContent = "→ Artikel nicht in Datenbank"; info.className = "kontakte-info unknown"; }
+    }
+    const spoolEl = document.getElementById("spool-" + d.gruppe);
+    const stueckzahl = findStueckzahl(d.artikel);
+    if (spoolEl && stueckzahl) spoolEl.value = parseInt(stueckzahl, 10).toLocaleString("de-DE").replace(/,/g, ".");
+    updateCalc(d.gruppe);
+  }
+
+  const card = document.getElementById("acard-" + d.gruppe);
+  if (card) {
+    card.classList.remove("flash");
+    void card.offsetWidth;
+    card.classList.add("flash");
+  }
+  return true;
+}
+
 let lastFocusedAnlage = null;
 
 // ---------------------------------------------------------
@@ -840,13 +965,15 @@ sections.forEach((s, i) => {
       <div class="print-box" id="pbox-${i}"></div>
       <div class="btn-row">
         <button type="button" class="btn correct" data-idx="${i}">✓ Korrigieren</button>
-        <button type="button" class="btn photo" data-photo="${i}">📷 Foto → Text</button>
-        <button type="button" class="btn paste" data-paste="${i}">📋 Einfügen</button>
         <button type="button" class="btn" data-clear="${i}">Leeren</button>
       </div>
-      <input type="file" accept="image/*" multiple id="photo-${i}" style="display:none">
+      <div class="ki-paste-box">
+        <textarea id="kipaste-${i}" rows="2" placeholder="KI-Antwort hier einfügen (Feld antippen & halten → Einfügen)"></textarea>
+        <button type="button" class="btn paste" data-distribute="${i}">↳ Auf Anlagen verteilen</button>
+      </div>
+      <button type="button" class="btn ai-prompt" data-ai-prompt>🤖 KI-Prompt kopieren (für ChatGPT/Claude)</button>
       <div class="photo-status" id="photostatus-${i}"></div>
-      <div class="hint">📷/📋 versucht automatisch Anlage, Artikel und Mengen zu erkennen und trägt sie in die passende Karte ein. Klappt es nicht, bitte einzeln in die Felder eintragen/einfügen.</div>
+      <div class="hint">Für alle 4 Anlagen auf einmal: Fotos in ChatGPT/Gemini hochladen, „🤖 KI-Prompt kopieren" antippen, Prompt einfügen, komplette Antwort kopieren, oben ins Feld einfügen (antippen & halten → Einfügen) und „↳ Auf Anlagen verteilen" tippen.</div>
   ` : `
       ${s.withStatus ? `
       <div class="status-toggle">
@@ -894,14 +1021,16 @@ container.addEventListener("click", (e) => {
     updateProgress();
     return;
   }
-  const photoBtn = e.target.closest(".btn.photo");
-  if (photoBtn) {
-    document.getElementById("photo-" + photoBtn.dataset.photo).click();
+  const distributeBtn = e.target.closest("[data-distribute]");
+  if (distributeBtn) {
+    distributeKiAnswer(distributeBtn.dataset.distribute);
     return;
   }
-  const pasteBtn = e.target.closest(".btn.paste");
-  if (pasteBtn) {
-    pasteFromClipboard(pasteBtn.dataset.paste);
+  const aiPromptBtn = e.target.closest("[data-ai-prompt]");
+  if (aiPromptBtn) {
+    const prompt = "Ich lade dir Fotos von bis zu 4 Anlagen-Bildschirmen hoch. Lies für JEDES Foto einzeln die Anlage/Gruppe-Nummer, die Artikelnummer sowie die Werte für Soll, Gut und Ausschuss aus. Gib deine gesamte Antwort in EINEM einzigen Code-Block aus (mit dreifachen Backticks ``` am Anfang und Ende), damit ich sie mit einem Tipp kopieren kann. Innerhalb des Code-Blocks: für jede Anlage einen eigenen Block, in genau diesem Format, getrennt durch eine Zeile die nur \"---\" enthält. Kein Text außerhalb des Code-Blocks, keine Einleitung, keine Erklärung.\n\nGruppe: [Zahl]\nArtikel: [Nummer]-E\nMengen (Soll / Gut / Ausschuss): [Zahl] / [Zahl] / [Zahl]\n---\nGruppe: [Zahl]\nArtikel: [Nummer]-E\nMengen (Soll / Gut / Ausschuss): [Zahl] / [Zahl] / [Zahl]";
+    showPromptBox(prompt);
+    try { navigator.clipboard.writeText(prompt); } catch (err) { /* still shown below for manual copy */ }
     return;
   }
   const clearNumsBtn = e.target.closest("[data-anlage-clear]");
@@ -939,6 +1068,8 @@ container.addEventListener("click", (e) => {
       document.getElementById("ta-" + idx).value = "";
       if (sections[idx].type === "production") {
         document.querySelectorAll("#sections .af").forEach(el => el.value = "");
+        const kiEl = document.getElementById("kipaste-" + idx);
+        if (kiEl) kiEl.value = "";
       }
       const statusEl = document.getElementById("photostatus-" + idx);
       if (statusEl) { statusEl.textContent = ""; statusEl.style.display = "none"; }
@@ -1003,6 +1134,12 @@ container.addEventListener("input", (e) => {
       else if (formatted) { info.textContent = "→ Artikel nicht in Datenbank"; info.className = "kontakte-info unknown"; }
       else { info.textContent = ""; }
     }
+    // Kontakte auf der Spule automatisch aus der Standard-Stückzahl vorausfüllen
+    const spoolEl = document.getElementById("spool-" + el.dataset.anlage);
+    if (spoolEl && formatted) {
+      const stueckzahl = findStueckzahl(formatted);
+      if (stueckzahl) spoolEl.value = parseInt(stueckzahl, 10).toLocaleString("de-DE").replace(/,/g, ".");
+    }
     updateCalc(el.dataset.anlage);
   }
   if (e.target.id && e.target.id.startsWith("spool-")) {
@@ -1033,26 +1170,8 @@ container.addEventListener("focus", (e) => {
 }, true);
 
 // ---------------------------------------------------------
-// FOTO → TEXT (OCR)
-//    Kamera direkt öffnen, Text/Zahlen im Bild erkennen
-//    (z. B. Zählerstände, Anzeigen) und in das Feld einfügen.
-//    Nutzt Tesseract.js, wird erst bei Bedarf nachgeladen
-//    (benötigt dafür einmalig Internetverbindung).
+// "Einfügen"/KI-Workflow: Status-Anzeige unter den Anlagen-Karten
 // ---------------------------------------------------------
-let tesseractLoading = null;
-function loadTesseract() {
-  if (window.Tesseract) return Promise.resolve(window.Tesseract);
-  if (tesseractLoading) return tesseractLoading;
-  tesseractLoading = new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-    s.onload = () => resolve(window.Tesseract);
-    s.onerror = () => reject(new Error("Konnte Texterkennung nicht laden (Internet nötig)"));
-    document.head.appendChild(s);
-  });
-  return tesseractLoading;
-}
-
 function setPhotoStatus(idx, text, cls) {
   const el = document.getElementById("photostatus-" + idx);
   el.textContent = text;
@@ -1061,225 +1180,60 @@ function setPhotoStatus(idx, text, cls) {
 }
 
 // ---------------------------------------------------------
-// "Einfügen"-Button: liest per iPhone-Live-Text kopierten Text
-// aus der Zwischenablage. Zuverlässiger als automatische
-// Foto-Erkennung, da Apples eigene Texterkennung genutzt wird.
+// "↳ Auf Anlagen verteilen": liest den Text, den der Nutzer per
+// nativem Einfügen (antippen & halten) manuell ins Feld eingefügt
+// hat. Braucht KEINE Clipboard-API und KEIN prompt()-Fenster,
+// funktioniert daher unabhängig von Hosting/Browser-Einschränkungen.
 // ---------------------------------------------------------
-async function pasteFromClipboard(idx) {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text || !text.trim()) {
-      setPhotoStatus(idx, "⚠️ Zwischenablage ist leer. Erst Text per Live Text kopieren.", "err");
-      return;
-    }
-    const parsed = parseProductionData(text);
-    if (fillAnlageCard(parsed)) {
-      updateProgress();
-      setPhotoStatus(idx, `✓ Anlage ${parsed.gruppe} automatisch befüllt – bitte kurz prüfen.`, "ok");
-      return;
-    }
+// Zerlegt eine KI-Antwort mit mehreren Anlagen-Blöcken in Einzelblöcke.
+// Bevorzugt an "---"-Trennlinien, sonst an jedem neuen "Gruppe:"-Vorkommen.
+function splitAnlageBlocks(text) {
+  if (/-{3,}/.test(text)) {
+    return text.split(/-{3,}/).map(s => s.trim()).filter(Boolean);
+  }
+  const parts = text.split(/(?=Gruppe\s*:)/i).map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts : [text];
+}
+
+function distributeKiAnswer(idx) {
+  const kiEl = document.getElementById("kipaste-" + idx);
+  const text = kiEl.value;
+  if (!text || !text.trim()) {
+    setPhotoStatus(idx, "⚠️ Feld ist leer. Erst Antwort aus ChatGPT/Gemini oben einfügen (antippen & halten → Einfügen).", "err");
+    return;
+  }
+
+  const blocks = splitAnlageBlocks(text);
+  let assigned = 0;
+  const leftover = [];
+
+  blocks.forEach(block => {
+    const parsed = parseProductionData(block);
+    if (fillAnlageCard(parsed)) assigned++;
+    else leftover.push(block);
+  });
+
+  updateProgress();
+
+  if (assigned > 0 && leftover.length === 0) {
+    kiEl.value = "";
+    setPhotoStatus(idx, `✓ ${assigned} Anlage(n) automatisch befüllt – bitte kurz prüfen.`, "ok");
+  } else if (assigned > 0) {
+    const ta = document.getElementById("ta-" + idx);
+    const corrected = correctText(leftover.join("\n\n"));
+    ta.value = ta.value.trim() ? ta.value.trim() + "\n" + corrected : corrected;
+    ta.classList.remove("flash"); void ta.offsetWidth; ta.classList.add("flash");
+    kiEl.value = "";
+    setPhotoStatus(idx, `✓ ${assigned} Anlage(n) befüllt, ${leftover.length} Block nicht eindeutig – Rest bei „Sonstiges" zum manuellen Zuordnen.`, "ok");
+  } else {
     const ta = document.getElementById("ta-" + idx);
     const corrected = correctText(text.trim());
     ta.value = ta.value.trim() ? ta.value.trim() + "\n" + corrected : corrected;
-    ta.classList.remove("flash");
-    void ta.offsetWidth;
-    ta.classList.add("flash");
-    updateProgress();
-    setPhotoStatus(idx, "⚠️ Anlage nicht eindeutig erkannt – Text wurde bei „Sonstiges\" eingefügt, bitte manuell zuordnen.", "err");
-  } catch (err) {
-    setPhotoStatus(idx, "⚠️ Zugriff auf Zwischenablage nicht möglich. Bitte Text manuell einfügen (Feld antippen & halten → Einfügen).", "err");
+    ta.classList.remove("flash"); void ta.offsetWidth; ta.classList.add("flash");
+    kiEl.value = "";
+    setPhotoStatus(idx, "⚠️ Keine Anlage eindeutig erkannt – Text wurde bei „Sonstiges\" eingefügt, bitte manuell zuordnen.", "err");
   }
 }
-
-// ---------------------------------------------------------
-// Nur bei sehr großen Fotos (>2200px) verkleinern, um die
-// Erkennung nicht unnötig auszubremsen. Keine Farb-/Kontrast-
-// Veränderung mehr - das hatte die Erkennung eher verschlechtert.
-// ---------------------------------------------------------
-function preprocessImage(file, maxWidth = 2200) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const { width, height } = img;
-      if (width <= maxWidth) {
-        URL.revokeObjectURL(url);
-        resolve(file); // Originalbild unverändert verwenden
-        return;
-      }
-      const scale = maxWidth / width;
-      const canvas = document.createElement("canvas");
-      canvas.width = maxWidth;
-      canvas.height = Math.round(height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-    img.src = url;
-  });
-}
-
-// ---------------------------------------------------------
-// Erkennt strukturierte Produktionsdaten aus MES-Screens
-// (z. B. TE-Anlagenübersicht): Gruppe (= Anlage/Linie),
-// Artikel, Mengen Soll / Gutmenge / Ausschuss.
-// Bei Treffer wird daraus eine kompakte Zeile gebaut,
-// statt den rohen, unübersichtlichen OCR-Text einzufügen.
-// ---------------------------------------------------------
-function parseProductionData(rawText) {
-  const lines = rawText.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(Boolean);
-  const d = {};
-
-  // Anlage = "Gruppe". Bevorzugt bekannte Anlagen-Nummern 801-804 suchen
-  // (robuster als Positions-Regex bei mehrspaltigem OCR-Text).
-  let m = rawText.match(/\b(80[1-4])\b/);
-  if (m) d.gruppe = m[1];
-
-  // --- Artikel ---
-  const artikelClean = s => s.trim().replace(/^[:\s-]+/, "").replace(/[.,;:]+$/, "");
-  for (let i = 0; i < lines.length; i++) {
-    if (/artikel/i.test(lines[i])) {
-      let mm = lines[i].match(/artikel[^A-Za-z0-9]{0,5}([A-Za-z0-9][A-Za-z0-9\-.]{2,19})/i);
-      if (mm) { d.artikel = artikelClean(mm[1]); break; }
-      for (let j = 1; j <= 2 && i + j < lines.length; j++) {
-        const cand = lines[i + j];
-        if (!cand || /^(mengen|status|gruppe|kurzbezeichnung|arbeitsplatz)/i.test(cand)) continue;
-        const mm2 = cand.match(/([A-Za-z0-9]{3,10}[-.]?[A-Za-z0-9]{0,4})/);
-        if (mm2) { d.artikel = artikelClean(mm2[1]); break; }
-      }
-      if (d.artikel) break;
-    }
-  }
-
-  // --- Mengen (Soll / Gut / Ausschuss) ---
-  const numRe = /\d{1,3}(?:\.\d{3})*(?:,\d+)?/g;
-  for (let i = 0; i < lines.length; i++) {
-    const isLabelLine = /mengen/i.test(lines[i]) ||
-      (/soll/i.test(lines[i]) && /ausschuss/i.test(lines[i])) ||
-      (/soll/i.test(lines[i]) && /gut/i.test(lines[i]));
-    if (isLabelLine) {
-      const combined = lines.slice(i, i + 4).join(" ");
-      let nums = (combined.match(numRe) || []).filter(n => n.replace(/[.,]/g, "").length >= 2);
-      if (nums.length >= 3) {
-        d.soll = nums[0]; d.gut = nums[1]; d.ausschuss = nums[2];
-        break;
-      }
-    }
-  }
-
-  // Fallback: einzelne beschriftete Felder oben im Screen (Gutmenge / Ausschuss separat)
-  if (!d.gut) {
-    const gm = rawText.match(/Gutmenge[^\d]{0,10}([\d.,]{2,12})/i);
-    if (gm) d.gut = gm[1];
-  }
-  if (!d.ausschuss) {
-    const am = rawText.match(/Ausschuss[^\d]{0,10}([\d.,]{2,12})/i);
-    if (am) d.ausschuss = am[1];
-  }
-
-  return d;
-}
-
-function formatProductionData(d) {
-  // Nur als kompakte Zeile verwenden, wenn ALLE relevanten Felder
-  // gefunden wurden - sonst lieber den vollständigen Rohtext behalten,
-  // damit keine Angaben (Artikel/Mengen) verloren gehen.
-  if (d.gruppe && d.artikel && d.soll && d.gut && d.ausschuss) {
-    return `Anlage ${d.gruppe}: Artikel ${d.artikel}: Soll ${d.soll} / Gut ${d.gut} / Ausschuss ${d.ausschuss}`;
-  }
-  return null;
-}
-
-// Trägt erkannte Werte in die passende Anlagen-Karte (801-804) ein.
-// Gibt true zurück, wenn die Anlage eindeutig zugeordnet werden konnte.
-function fillAnlageCard(d) {
-  if (!d.gruppe || !ANLAGEN.includes(d.gruppe)) return false;
-  const set = (field, val) => {
-    if (!val) return;
-    const el = document.querySelector(`.af[data-anlage="${d.gruppe}"][data-field="${field}"]`);
-    if (el) el.value = val;
-  };
-  set("artikel", d.artikel);
-  set("soll", d.soll);
-  set("gut", d.gut);
-  set("ausschuss", d.ausschuss);
-  const card = document.getElementById("acard-" + d.gruppe);
-  if (card) {
-    card.classList.remove("flash");
-    void card.offsetWidth;
-    card.classList.add("flash");
-  }
-  return true;
-}
-
-async function handlePhotos(idx, fileList) {
-  const files = Array.from(fileList);
-  const ta = document.getElementById("ta-" + idx);
-  let assignedCount = 0;
-  let fallbackCount = 0;
-  let badCount = 0;
-  let lowConfidence = false;
-
-  for (let n = 0; n < files.length; n++) {
-    setPhotoStatus(idx, `⏳ Bild ${n + 1}/${files.length} wird vorbereitet …`, "busy");
-    try {
-      const canvas = await preprocessImage(files[n]);
-      setPhotoStatus(idx, `⏳ Bild ${n + 1}/${files.length} wird erkannt …`, "busy");
-      const Tesseract = await loadTesseract();
-      const { data } = await Tesseract.recognize(canvas, "deu");
-
-      if (!data.text || data.text.trim().length < 2) {
-        badCount++;
-        continue;
-      }
-      if (data.confidence < 35) lowConfidence = true;
-
-      const parsed = parseProductionData(data.text);
-      if (fillAnlageCard(parsed)) {
-        assignedCount++;
-      } else {
-        // Anlage nicht eindeutig -> Rohtext in Notizen, damit nichts verloren geht
-        const corrected = correctText(data.text.trim());
-        if (corrected) {
-          ta.value = ta.value.trim() ? ta.value.trim() + "\n" + corrected : corrected;
-          fallbackCount++;
-        }
-      }
-    } catch (err) {
-      setPhotoStatus(idx, "⚠️ " + err.message, "err");
-      return;
-    }
-  }
-
-  if (fallbackCount > 0) {
-    ta.classList.remove("flash");
-    void ta.offsetWidth;
-    ta.classList.add("flash");
-  }
-  updateProgress();
-
-  if (assignedCount === 0 && fallbackCount === 0) {
-    setPhotoStatus(idx, `⚠️ Kein lesbarer Text im Foto gefunden. Bitte näher, scharf und ohne Spiegelung/Blendung neu fotografieren.`, "err");
-  } else if (fallbackCount > 0 && assignedCount === 0) {
-    setPhotoStatus(idx, `⚠️ Anlage konnte nicht sicher erkannt werden – Text wurde unten bei „Sonstiges" eingefügt, bitte manuell den Feldern zuordnen.`, "err");
-  } else if (lowConfidence) {
-    setPhotoStatus(idx, `✓ ${assignedCount} Anlage(n) automatisch befüllt – Erkennung war unsicher, bitte Felder prüfen.`, "ok");
-  } else {
-    setPhotoStatus(idx, `✓ ${assignedCount} Anlage(n) automatisch befüllt – bitte kurz prüfen. Für weitere Anlagen einfach nochmal „Foto → Text" antippen.`, "ok");
-  }
-}
-
-container.addEventListener("change", (e) => {
-  const input = e.target;
-  if (input.tagName === "INPUT" && input.type === "file" && input.id.startsWith("photo-")) {
-    const idx = input.id.replace("photo-", "");
-    if (input.files && input.files.length) handlePhotos(idx, input.files);
-    input.value = ""; // erlaubt erneute Auswahl der gleichen Datei(en)
-  }
-});
-
 document.getElementById("expandAllBtn").addEventListener("click", () => {
   const secs = document.querySelectorAll(".section");
   const anyClosed = [...secs].some(s => !s.classList.contains("open"));
@@ -1421,9 +1375,10 @@ function renderArtikelDbList() {
   const sorted = [...artikelDB].sort((a, b) => a.artikel.localeCompare(b.artikel, "de"));
   artikelDbList.innerHTML = sorted.map(entry => {
     const realIdx = artikelDB.indexOf(entry);
+    const stueckzahlText = entry.stueckzahl ? ` · ${parseInt(entry.stueckzahl, 10).toLocaleString("de-DE")} Stk/Spule` : "";
     return `
     <div class="artikel-db-item">
-      <div class="txt" data-insert="${realIdx}">${entry.artikel}<small>${entry.kontakte} Kontakte/m</small></div>
+      <div class="txt" data-insert="${realIdx}">${entry.artikel}<small>${entry.kontakte} Kontakte/m${stueckzahlText}</small></div>
       <button type="button" class="del" data-del-artikel="${realIdx}">✕</button>
     </div>`;
   }).join("");
@@ -1443,17 +1398,20 @@ artikelDbOverlay.addEventListener("click", (e) => {
 document.getElementById("addArtikelBtn").addEventListener("click", () => {
   const nrEl = document.getElementById("newArtikelNr");
   const kEl = document.getElementById("newArtikelKontakte");
+  const sEl = document.getElementById("newArtikelStueckzahl");
   const digits = nrEl.value.replace(/[^0-9]/g, "");
   const kontakte = kEl.value.replace(/[^0-9]/g, "");
+  const stueckzahl = sEl.value.replace(/[^0-9]/g, "");
   if (!digits) { nrEl.focus(); return; }
   if (!kontakte) { kEl.focus(); return; }
   const artikel = digits + "-E";
   const existing = artikelDB.find(e => e.artikel === artikel);
-  if (existing) { existing.kontakte = kontakte; }
-  else { artikelDB.push({ artikel, kontakte }); }
+  if (existing) { existing.kontakte = kontakte; existing.stueckzahl = stueckzahl || existing.stueckzahl || ""; }
+  else { artikelDB.push({ artikel, kontakte, stueckzahl }); }
   saveArtikelDB();
   nrEl.value = "";
   kEl.value = "";
+  sEl.value = "";
   renderArtikelDbList();
 });
 
@@ -1480,10 +1438,31 @@ artikelDbList.addEventListener("click", (e) => {
       el.value = entry.artikel;
       const info = document.getElementById("kontakte-info-" + lastFocusedAnlage);
       if (info) { info.textContent = `→ ${entry.kontakte} Kontakte/m`; info.className = "kontakte-info"; }
+      const spoolEl = document.getElementById("spool-" + lastFocusedAnlage);
+      if (spoolEl && entry.stueckzahl) spoolEl.value = parseInt(entry.stueckzahl, 10).toLocaleString("de-DE").replace(/,/g, ".");
+      updateCalc(lastFocusedAnlage);
       updateProgress();
     }
     artikelDbOverlay.classList.remove("open");
   }
+});
+
+// ---------------------------------------------------------
+// 7) PROMPT-ANZEIGE (Fallback ohne Clipboard-API)
+// ---------------------------------------------------------
+function showPromptBox(text) {
+  const overlay = document.getElementById("promptOverlay");
+  const ta = document.getElementById("promptDisplay");
+  ta.value = text;
+  overlay.classList.add("open");
+  ta.focus();
+  ta.select();
+}
+document.getElementById("promptCloseBtn").addEventListener("click", () => {
+  document.getElementById("promptOverlay").classList.remove("open");
+});
+document.getElementById("promptOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "promptOverlay") document.getElementById("promptOverlay").classList.remove("open");
 });
 </script>
 
