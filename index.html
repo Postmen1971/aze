@@ -717,6 +717,34 @@ function findStueckzahl(artikelValue) {
   return entry && entry.stueckzahl ? entry.stueckzahl : null;
 }
 
+// Aktualisiert bei allen 4 Anlagen-Karten die "Kontakte/m"-Anzeige und
+// befüllt ggf. die Spulen-Stückzahl neu - wird aufgerufen, wenn sich
+// die Artikel-Datenbank ändert (Hinzufügen/Löschen), damit bereits
+// eingetragene Artikelnummern nicht mit veralteter Info stehen bleiben.
+function refreshAllKontakteInfo() {
+  ANLAGEN.forEach(a => {
+    const artikelEl = document.querySelector(`.af[data-anlage="${a}"][data-field="artikel"]`);
+    if (!artikelEl) return;
+    const val = artikelEl.value.trim();
+    const info = document.getElementById("kontakte-info-" + a);
+    if (val) {
+      const kontakte = findKontakte(val);
+      if (info) {
+        if (kontakte) { info.textContent = `→ ${kontakte} Kontakte/m`; info.className = "kontakte-info"; }
+        else { info.textContent = "→ Artikel nicht in Datenbank"; info.className = "kontakte-info unknown"; }
+      }
+      const stueckzahl = findStueckzahl(val);
+      if (stueckzahl) {
+        const spoolEl = document.getElementById("spool-" + a);
+        if (spoolEl) spoolEl.value = parseInt(stueckzahl, 10).toLocaleString("de-DE").replace(/,/g, ".");
+      }
+      updateCalc(a);
+    } else if (info) {
+      info.textContent = "";
+    }
+  });
+}
+
 // ---------------------------------------------------------
 // Liest aus einem (KI- oder OCR-)Text Anlage/Gruppe, Artikel
 // und die Mengen Soll/Gut/Ausschuss zeilenbasiert heraus.
@@ -1450,6 +1478,7 @@ document.getElementById("addArtikelBtn").addEventListener("click", () => {
   kEl.value = "";
   sEl.value = "";
   renderArtikelDbList();
+  refreshAllKontakteInfo();
 });
 
 artikelDbList.addEventListener("click", (e) => {
@@ -1459,6 +1488,7 @@ artikelDbList.addEventListener("click", (e) => {
     artikelDB.splice(idx, 1);
     saveArtikelDB();
     renderArtikelDbList();
+    refreshAllKontakteInfo();
     return;
   }
   const insertEl = e.target.closest("[data-insert]");
