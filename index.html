@@ -472,6 +472,23 @@
       line-height: 1.4;
       color: #222;
     }
+    /* Leere Punkte im Ausdruck so schmal wie möglich halten */
+    .section.print-empty {
+      margin-bottom: 3px;
+    }
+    .section.print-empty .section-head {
+      padding: 5px 10px;
+    }
+    .section.print-empty .section-body {
+      display: block !important;
+      padding: 0 10px 5px !important;
+    }
+    .section.print-empty .print-box {
+      font-size: 11px;
+      font-style: italic;
+      color: #999;
+      line-height: 1.1;
+    }
     footer { display: none !important; }
   }
 </style>
@@ -1333,6 +1350,8 @@ function preparePrintView() {
     // Textinhalt
     const ta = document.getElementById("ta-" + i);
     const box = document.getElementById("pbox-" + i);
+    const sectionEl = box.closest(".section");
+    let isEmpty = false;
 
     if (s.type === "production") {
       const esc = str => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1361,10 +1380,15 @@ function preparePrintView() {
         }
       });
       if (ta.value.trim()) htmlLines.push("Sonstiges: " + esc(ta.value.trim()));
-      box.innerHTML = htmlLines.length ? htmlLines.join("<br>") : "— keine Angabe —";
+      isEmpty = htmlLines.length === 0;
+      box.innerHTML = isEmpty ? "— keine Angabe —" : htmlLines.join("<br>");
     } else {
+      const hasStatusInfo = s.withStatus && document.querySelector(`.status-toggle button.active-yes[data-idx="${i}"], .status-toggle button.active-no[data-idx="${i}"]`);
+      isEmpty = !ta.value.trim() && !hasStatusInfo;
       box.textContent = ta.value.trim() || "— keine Angabe —";
     }
+
+    if (sectionEl) sectionEl.classList.toggle("print-empty", isEmpty);
 
     // Status Ja/Nein (nur bei Prozessparameter-Abschnitt)
     if (s.withStatus) {
