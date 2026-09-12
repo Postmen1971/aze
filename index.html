@@ -967,13 +967,15 @@ sections.forEach((s, i) => {
         <button type="button" class="btn correct" data-idx="${i}">✓ Korrigieren</button>
         <button type="button" class="btn" data-clear="${i}">Leeren</button>
       </div>
-      <div class="ki-paste-box">
+      <button type="button" class="btn paste" data-autopaste="${i}" style="width:100%; margin-top:8px;">📋 Einfügen &amp; verteilen</button>
+      <button type="button" class="af-calc-btn" data-manual-toggle="${i}">✏️ Klappt nicht? Manuell einfügen</button>
+      <div class="ki-paste-box" id="ki-manual-${i}" style="display:none;">
         <textarea id="kipaste-${i}" rows="2" placeholder="KI-Antwort hier einfügen (Feld antippen & halten → Einfügen)"></textarea>
         <button type="button" class="btn paste" data-distribute="${i}">↳ Auf Anlagen verteilen</button>
       </div>
       <button type="button" class="btn ai-prompt" data-ai-prompt>🤖 KI-Prompt kopieren (für ChatGPT/Claude)</button>
       <div class="photo-status" id="photostatus-${i}"></div>
-      <div class="hint">Für alle 4 Anlagen auf einmal: Fotos in ChatGPT/Gemini hochladen, „🤖 KI-Prompt kopieren" antippen, Prompt einfügen, komplette Antwort kopieren, oben ins Feld einfügen (antippen & halten → Einfügen) und „↳ Auf Anlagen verteilen" tippen.</div>
+      <div class="hint">Für alle 4 Anlagen auf einmal: Fotos in ChatGPT/Gemini hochladen, „🤖 KI-Prompt kopieren" antippen, Prompt einfügen, komplette Antwort kopieren, dann hier „📋 Einfügen & verteilen" antippen – ein Tipp genügt.</div>
   ` : `
       ${s.withStatus ? `
       <div class="status-toggle">
@@ -1024,6 +1026,17 @@ container.addEventListener("click", (e) => {
   const distributeBtn = e.target.closest("[data-distribute]");
   if (distributeBtn) {
     distributeKiAnswer(distributeBtn.dataset.distribute);
+    return;
+  }
+  const autoPasteBtn = e.target.closest("[data-autopaste]");
+  if (autoPasteBtn) {
+    autoPasteAndDistribute(autoPasteBtn.dataset.autopaste);
+    return;
+  }
+  const manualToggleBtn = e.target.closest("[data-manual-toggle]");
+  if (manualToggleBtn) {
+    const box = document.getElementById("ki-manual-" + manualToggleBtn.dataset.manualToggle);
+    if (box) box.style.display = box.style.display === "none" ? "block" : "none";
     return;
   }
   const aiPromptBtn = e.target.closest("[data-ai-prompt]");
@@ -1180,10 +1193,10 @@ function setPhotoStatus(idx, text, cls) {
 }
 
 // ---------------------------------------------------------
-// "↳ Auf Anlagen verteilen": liest den Text, den der Nutzer per
-// nativem Einfügen (antippen & halten) manuell ins Feld eingefügt
-// hat. Braucht KEINE Clipboard-API und KEIN prompt()-Fenster,
-// funktioniert daher unabhängig von Hosting/Browser-Einschränkungen.
+// Verarbeitet einen KI-Antwort-Text: in Anlagen-Blöcke zerlegen,
+// jeden parsen und in die passende Karte eintragen. Wird sowohl
+// vom automatischen (Clipboard-API) als auch vom manuellen
+// (Feld einfügen) Weg genutzt.
 // ---------------------------------------------------------
 // Zerlegt eine KI-Antwort mit mehreren Anlagen-Blöcken in Einzelblöcke.
 // Bevorzugt an "---"-Trennlinien, sonst an jedem neuen "Gruppe:"-Vorkommen.
@@ -1195,11 +1208,9 @@ function splitAnlageBlocks(text) {
   return parts.length > 1 ? parts : [text];
 }
 
-function distributeKiAnswer(idx) {
-  const kiEl = document.getElementById("kipaste-" + idx);
-  const text = kiEl.value;
+function processKiText(idx, text) {
   if (!text || !text.trim()) {
-    setPhotoStatus(idx, "⚠️ Feld ist leer. Erst Antwort aus ChatGPT/Gemini oben einfügen (antippen & halten → Einfügen).", "err");
+    setPhotoStatus(idx, "⚠️ Kein Text erhalten.", "err");
     return;
   }
 
@@ -1216,23 +1227,49 @@ function distributeKiAnswer(idx) {
   updateProgress();
 
   if (assigned > 0 && leftover.length === 0) {
-    kiEl.value = "";
     setPhotoStatus(idx, `✓ ${assigned} Anlage(n) automatisch befüllt – bitte kurz prüfen.`, "ok");
   } else if (assigned > 0) {
     const ta = document.getElementById("ta-" + idx);
     const corrected = correctText(leftover.join("\n\n"));
     ta.value = ta.value.trim() ? ta.value.trim() + "\n" + corrected : corrected;
     ta.classList.remove("flash"); void ta.offsetWidth; ta.classList.add("flash");
-    kiEl.value = "";
     setPhotoStatus(idx, `✓ ${assigned} Anlage(n) befüllt, ${leftover.length} Block nicht eindeutig – Rest bei „Sonstiges" zum manuellen Zuordnen.`, "ok");
   } else {
     const ta = document.getElementById("ta-" + idx);
     const corrected = correctText(text.trim());
     ta.value = ta.value.trim() ? ta.value.trim() + "\n" + corrected : corrected;
     ta.classList.remove("flash"); void ta.offsetWidth; ta.classList.add("flash");
-    kiEl.value = "";
     setPhotoStatus(idx, "⚠️ Keine Anlage eindeutig erkannt – Text wurde bei „Sonstiges\" eingefügt, bitte manuell zuordnen.", "err");
   }
+}
+
+// Ein-Klick-Weg: liest die Zwischenablage automatisch aus.
+async function autoPasteAndDistribute(idx) {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) {
+      setPhotoStatus(idx, "⚠️ Zwischenablage ist leer. Erst Antwort aus ChatGPT/Gemini kopieren.", "err");
+      return;
+    }
+    processKiText(idx, text);
+  } catch (err) {
+    setPhotoStatus(idx, "⚠️ Automatisches Einfügen hier nicht möglich. Bitte „✏️ Manuell einfügen\" unten nutzen.", "err");
+    const manualBox = document.getElementById("ki-manual-" + idx);
+    if (manualBox) manualBox.style.display = "block";
+  }
+}
+
+// Fallback-Weg: liest den Text, den der Nutzer per nativem
+// Einfügen (antippen & halten) manuell ins Feld eingefügt hat.
+function distributeKiAnswer(idx) {
+  const kiEl = document.getElementById("kipaste-" + idx);
+  const text = kiEl.value;
+  if (!text || !text.trim()) {
+    setPhotoStatus(idx, "⚠️ Feld ist leer. Erst Antwort aus ChatGPT/Gemini oben einfügen (antippen & halten → Einfügen).", "err");
+    return;
+  }
+  processKiText(idx, text);
+  kiEl.value = "";
 }
 document.getElementById("expandAllBtn").addEventListener("click", () => {
   const secs = document.querySelectorAll(".section");
