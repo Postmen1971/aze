@@ -855,11 +855,13 @@ function updateCalc(a) {
   if (!artikelVal) {
     resultEl.textContent = "Bitte zuerst Artikelnummer eingeben.";
     resultEl.className = "calc-result warn";
+    delete resultEl.dataset.minutes;
     return;
   }
   if (!kontaktePerMeter) {
     resultEl.textContent = "⚠️ Kontakte/m für diesen Artikel unbekannt – bitte in der 🗂️ Artikel-Datenbank ergänzen.";
     resultEl.className = "calc-result warn";
+    delete resultEl.dataset.minutes;
     return;
   }
 
@@ -874,6 +876,7 @@ function updateCalc(a) {
   if (!spoolDigits || !speedVal) {
     resultEl.textContent = "";
     resultEl.className = "calc-result";
+    delete resultEl.dataset.minutes;
     return;
   }
 
@@ -889,6 +892,10 @@ function updateCalc(a) {
   const spulenText = spoolCount > 1 ? `${spoolCount} Spulen × ${Math.round(laengeProSpule).toLocaleString("de-DE")} m = ` : "";
   resultEl.className = "calc-result";
   resultEl.textContent = `≈ ${spulenText}${Math.round(laenge).toLocaleString("de-DE")} m Restlänge · noch ca. ${std} Std ${min} Min · fertig ca. ${hh}:${mm} Uhr`;
+  resultEl.dataset.minutes = String(Math.round(minuten));
+  resultEl.dataset.std = String(std);
+  resultEl.dataset.min = String(min);
+  resultEl.dataset.fertig = `${hh}:${mm}`;
 }
 
 function buildCustomPhraseFixes() {
@@ -1328,7 +1335,8 @@ function preparePrintView() {
     const box = document.getElementById("pbox-" + i);
 
     if (s.type === "production") {
-      const lines = [];
+      const esc = str => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const htmlLines = [];
       ANLAGEN.forEach(a => {
         const get = f => document.querySelector(`.af[data-anlage="${a}"][data-field="${f}"]`)?.value.trim() || "";
         const artikel = get("artikel"), soll = get("soll"), gut = get("gut"), ausschuss = get("ausschuss");
@@ -1340,11 +1348,20 @@ function preparePrintView() {
           if (gut) mengen.push(`Gut ${gut}`);
           if (ausschuss) mengen.push(`Ausschuss ${ausschuss}`);
           if (mengen.length) parts.push(mengen.join(" / "));
-          lines.push(parts.join(": "));
+          htmlLines.push(esc(parts.join(": ")));
+
+          // Restlaufzeit direkt darunter, farbig (rot = bald rüsten, grün = noch Zeit)
+          const calcResult = document.getElementById("calc-result-" + a);
+          if (calcResult && calcResult.dataset.minutes) {
+            const minutes = parseInt(calcResult.dataset.minutes, 10);
+            const std = calcResult.dataset.std, min = calcResult.dataset.min, fertig = calcResult.dataset.fertig;
+            const color = minutes <= 60 ? "#c62828" : "#2e7d32";
+            htmlLines.push(`<span style="color:${color}; font-weight:700;">⏱ Restlaufzeit: ${std} Std ${min} Min (fertig ca. ${fertig} Uhr)</span>`);
+          }
         }
       });
-      if (ta.value.trim()) lines.push("Sonstiges: " + ta.value.trim());
-      box.textContent = lines.length ? lines.join("\n") : "— keine Angabe —";
+      if (ta.value.trim()) htmlLines.push("Sonstiges: " + esc(ta.value.trim()));
+      box.innerHTML = htmlLines.length ? htmlLines.join("<br>") : "— keine Angabe —";
     } else {
       box.textContent = ta.value.trim() || "— keine Angabe —";
     }
