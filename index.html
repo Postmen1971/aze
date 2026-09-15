@@ -925,16 +925,21 @@ function updateCalc(a) {
   const std = Math.floor(minuten / 60);
   const min = Math.round(minuten % 60);
   const fertig = new Date(Date.now() + minuten * 60000);
+  const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  const wd = wochentage[fertig.getDay()];
+  const dd = String(fertig.getDate()).padStart(2, "0");
+  const mo = String(fertig.getMonth() + 1).padStart(2, "0");
   const hh = String(fertig.getHours()).padStart(2, "0");
   const mm = String(fertig.getMinutes()).padStart(2, "0");
+  const fertigStr = `${wd} ${dd}.${mo}. ${hh}:${mm}`;
 
   const spulenText = spoolCount > 1 ? `${spoolCount} Spulen × ${Math.round(laengeProSpule).toLocaleString("de-DE")} m = ` : "";
   resultEl.className = "calc-result";
-  resultEl.textContent = `≈ ${spulenText}${Math.round(laenge).toLocaleString("de-DE")} m Restlänge · noch ca. ${std} Std ${min} Min · fertig ca. ${hh}:${mm} Uhr`;
+  resultEl.textContent = `≈ ${spulenText}${Math.round(laenge).toLocaleString("de-DE")} m Restlänge · noch ca. ${std} Std ${min} Min · fertig ca. ${fertigStr} Uhr`;
   resultEl.dataset.minutes = String(Math.round(minuten));
   resultEl.dataset.std = String(std);
   resultEl.dataset.min = String(min);
-  resultEl.dataset.fertig = `${hh}:${mm}`;
+  resultEl.dataset.fertig = fertigStr;
 }
 
 function buildCustomPhraseFixes() {
