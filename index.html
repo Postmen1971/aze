@@ -277,6 +277,16 @@
   }
   .artikel-db-item .txt { flex: 1; }
   .artikel-db-item .txt small { display: block; color: #999; font-size: 11px; }
+  .artikel-db-item .edit {
+    background: #eef3f9;
+    color: #003366;
+    border: none;
+    border-radius: 5px;
+    width: 26px; height: 26px;
+    font-size: 13px;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
   .artikel-db-item .del {
     background: #fdecea;
     color: #c62828;
@@ -285,6 +295,7 @@
     width: 26px; height: 26px;
     font-size: 14px;
     margin-left: 8px;
+    flex-shrink: 0;
   }
   .notes-label { font-size: 11.5px; font-weight: 600; color: #003366; margin: 8px 0 4px; }
 
@@ -375,12 +386,14 @@
     color: #003366;
     margin: 6px 0 2px;
   }
-  .glossary-add input {
+  .glossary-add input, .glossary-add textarea {
     width: 100%;
     font-size: 16px;
     padding: 7px 8px;
     border: 1px solid #ccd5e0;
     border-radius: 6px;
+    box-sizing: border-box;
+    font-family: inherit;
   }
   .glossary-add button {
     width: 100%;
@@ -553,6 +566,15 @@
 
     <div class="glossary-list-title">Artikel</div>
     <div id="artikelDbList"></div>
+
+    <div class="glossary-list-title">Teilen / Sichern</div>
+    <div class="sub" style="margin-top:-4px;">Export erzeugt einen Text zum Kopieren (z. B. per WhatsApp an Kollegen schicken). Import liest genau diesen Text wieder ein und ergänzt/aktualisiert eure Liste.</div>
+    <div class="glossary-add">
+      <button type="button" id="exportArtikelBtn">📤 Als Text exportieren</button>
+      <label>Text von Kollege einfügen (antippen & halten → Einfügen)</label>
+      <textarea id="importArtikelText" rows="3" placeholder="Hier den exportierten Text einfügen..."></textarea>
+      <button type="button" id="importArtikelBtn">📥 Importieren (ergänzt/aktualisiert)</button>
+    </div>
 
     <button type="button" class="glossary-close" id="artikelDbCloseBtn">Schließen</button>
   </div>
@@ -1485,6 +1507,7 @@ function renderArtikelDbList() {
     return `
     <div class="artikel-db-item">
       <div class="txt" data-insert="${realIdx}">${entry.artikel}<small>${entry.kontakte} Kontakte/m${stueckzahlText}</small></div>
+      <button type="button" class="edit" data-edit-artikel="${realIdx}">✏️</button>
       <button type="button" class="del" data-del-artikel="${realIdx}">✕</button>
     </div>`;
   }).join("");
@@ -1518,11 +1541,71 @@ document.getElementById("addArtikelBtn").addEventListener("click", () => {
   nrEl.value = "";
   kEl.value = "";
   sEl.value = "";
+  document.getElementById("addArtikelBtn").textContent = "+ Artikel hinzufügen";
   renderArtikelDbList();
   refreshAllKontakteInfo();
 });
 
+// ---------------------------------------------------------
+// EXPORT / IMPORT der Artikel-Datenbank (zum Teilen zwischen Geräten)
+// ---------------------------------------------------------
+document.getElementById("exportArtikelBtn").addEventListener("click", () => {
+  if (artikelDB.length === 0) {
+    alert("Die Artikel-Datenbank ist noch leer – nichts zu exportieren.");
+    return;
+  }
+  const exportText = "MORGENRUNDE-ARTIKEL-EXPORT\n" + JSON.stringify(artikelDB);
+  showPromptBox(exportText);
+});
+
+document.getElementById("importArtikelBtn").addEventListener("click", () => {
+  const importEl = document.getElementById("importArtikelText");
+  const raw = importEl.value.trim();
+  if (!raw) {
+    alert("Bitte zuerst den exportierten Text hier einfügen.");
+    return;
+  }
+  try {
+    const jsonPart = raw.replace(/^MORGENRUNDE-ARTIKEL-EXPORT\s*/i, "").trim();
+    const imported = JSON.parse(jsonPart);
+    if (!Array.isArray(imported)) throw new Error("Kein gültiges Artikel-Format erkannt.");
+
+    let added = 0, updated = 0;
+    imported.forEach(entry => {
+      if (!entry || !entry.artikel) return;
+      const existing = artikelDB.find(e => e.artikel === entry.artikel);
+      if (existing) {
+        existing.kontakte = entry.kontakte || existing.kontakte;
+        existing.stueckzahl = entry.stueckzahl || existing.stueckzahl;
+        updated++;
+      } else {
+        artikelDB.push({ artikel: entry.artikel, kontakte: entry.kontakte || "", stueckzahl: entry.stueckzahl || "" });
+        added++;
+      }
+    });
+    saveArtikelDB();
+    renderArtikelDbList();
+    refreshAllKontakteInfo();
+    importEl.value = "";
+    alert(`✓ Import fertig: ${added} neue Artikel, ${updated} aktualisiert.`);
+  } catch (err) {
+    alert("⚠️ Der eingefügte Text konnte nicht gelesen werden. Bitte den kompletten Export-Text unverändert einfügen.");
+  }
+});
+
 artikelDbList.addEventListener("click", (e) => {
+  const editBtn = e.target.closest("[data-edit-artikel]");
+  if (editBtn) {
+    const idx = parseInt(editBtn.dataset.editArtikel, 10);
+    const entry = artikelDB[idx];
+    if (!entry) return;
+    document.getElementById("newArtikelNr").value = entry.artikel.replace(/-E$/i, "");
+    document.getElementById("newArtikelKontakte").value = entry.kontakte || "";
+    document.getElementById("newArtikelStueckzahl").value = entry.stueckzahl || "";
+    document.getElementById("addArtikelBtn").textContent = "✓ Änderung speichern";
+    document.getElementById("newArtikelKontakte").focus();
+    return;
+  }
   const delBtn = e.target.closest("[data-del-artikel]");
   if (delBtn) {
     const idx = parseInt(delBtn.dataset.delArtikel, 10);
