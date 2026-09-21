@@ -813,17 +813,29 @@ function parseProductionData(rawText) {
   }
 
   // --- Mengen (Soll / Gut / Ausschuss) ---
-  const numRe = /\d{1,3}(?:\.\d{3})*(?:,\d+)?/g;
-  for (let i = 0; i < lines.length; i++) {
-    const isLabelLine = /mengen/i.test(lines[i]) ||
-      (/soll/i.test(lines[i]) && /ausschuss/i.test(lines[i])) ||
-      (/soll/i.test(lines[i]) && /gut/i.test(lines[i]));
-    if (isLabelLine) {
-      const combined = lines.slice(i, i + 4).join(" ");
-      let nums = (combined.match(numRe) || []).filter(n => n.replace(/[.,]/g, "").length >= 2);
-      if (nums.length >= 3) {
-        d.soll = nums[0]; d.gut = nums[1]; d.ausschuss = nums[2];
-        break;
+  // Zuerst gezielt nach dem "A / B / C"-Format direkt hinter dem Mengen-Label
+  // suchen - das erfasst auch "0"-Werte korrekt (der generische Zahlen-Scan
+  // unten filtert einstellige Zahlen als Störgeräusch raus, was bei Gut/
+  // Ausschuss = 0 sonst dazu führt, dass die Soll-Zahl fälschlich ins
+  // Ausschuss-Feld rutscht).
+  let mengenDirect = rawText.match(/Mengen[^\n]*?(?:Soll[^\n]*?Gut[^\n]*?Ausschuss[^\n]*?)?\)?\s*:?\s*[\r\n]*\s*([\d.,]+)\s*\/\s*([\d.,]+)\s*\/\s*([\d.,]+)/i);
+  if (mengenDirect) {
+    d.soll = mengenDirect[1];
+    d.gut = mengenDirect[2];
+    d.ausschuss = mengenDirect[3];
+  } else {
+    const numRe = /\d{1,3}(?:\.\d{3})*(?:,\d+)?/g;
+    for (let i = 0; i < lines.length; i++) {
+      const isLabelLine = /mengen/i.test(lines[i]) ||
+        (/soll/i.test(lines[i]) && /ausschuss/i.test(lines[i])) ||
+        (/soll/i.test(lines[i]) && /gut/i.test(lines[i]));
+      if (isLabelLine) {
+        const combined = lines.slice(i, i + 4).join(" ");
+        let nums = (combined.match(numRe) || []).filter(n => n.replace(/[.,]/g, "").length >= 2);
+        if (nums.length >= 3) {
+          d.soll = nums[0]; d.gut = nums[1]; d.ausschuss = nums[2];
+          break;
+        }
       }
     }
   }
